@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/flyout_tool.iml" filepath="$PROJECT_DIR$/.idea/flyout_tool.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/IsentropicFlow.iml" filepath="$PROJECT_DIR$/.idea/IsentropicFlow.iml" />
     </modules>
   </component>
 </project>
