@@ -38,19 +38,19 @@ class IsentropicFlow:
     def rr0(self,m):
         return np.pow((1.+(self.gamma-1.)/2*m*m),-1/(self.gamma-1.))
 
-    # Normal Shock Temperature Ratio T2/T1
+    # Normal Shock
     def tts(self,m):
         return self.tt0(m)*(self.gamma/2. + 0.5)
 
-    # Normal Shock Pressure Ratio P2/P1
+    # Normal Shock
     def pps(self,m):
         return self.pp0(m)*np.pow((self.gamma/2 +0.5),self.gamma/(self.gamma-1.))
 
-    # Normal Shock Density Ratio r2/r1
+    # Normal Shock
     def rrs(self,m):
         return self.rr0(m)*np.pow((self.gamma/2 +0.5),1./(self.gamma-1.))
 
-    # Normal Shock Sonic Velocity Ratio a2/a1
+    # Normal Shock
     def aas(self,m):
         return 1./self.rrs(m)*np.sqrt(1./self.tts(m))/m
 
