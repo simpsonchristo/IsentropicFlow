@@ -38,17 +38,21 @@ class IsentropicFlow:
     def rr0(self,m):
         return np.pow((1.+(self.gamma-1.)/2*m*m),-1/(self.gamma-1.))
 
+    # Normal Shock Temperature Ratio T2/T1
     def tts(self,m):
-        return self.tt0(self,m)*(self.gamma/2. + 0.5)
+        return self.tt0(m)*(self.gamma/2. + 0.5)
 
+    # Normal Shock Pressure Ratio P2/P1
     def pps(self,m):
-        return self.pp0(self,m)*np.pow((self.gamma/2 +0.5),self.gamma/(self.gamma-1.))
+        return self.pp0(m)*np.pow((self.gamma/2 +0.5),self.gamma/(self.gamma-1.))
 
+    # Normal Shock Density Ratio r2/r1
     def rrs(self,m):
-        return self.rr0(self,m)*np.pow((self.gamma/2 +0.5),1./(self.gamma-1.))
+        return self.rr0(m)*np.pow((self.gamma/2 +0.5),1./(self.gamma-1.))
 
+    # Normal Shock Sonic Velocity Ratio a2/a1
     def aas(self,m):
-        return 1./self.rrs(self,m)*np.sqrt(1./self.tts(self,m))/m
+        return 1./self.rrs(m)*np.sqrt(1./self.tts(m))/m
 
     # Prandtl Meyer Function
     def nu(self,m):
@@ -57,6 +61,7 @@ class IsentropicFlow:
         n = n * 180. / 3.14159265359
         return n
 
+    # Normal Shock
     def m2(self,m1):
         return np.sqrt((1. + .5 * (self.gamma - 1.) * m1 * m1) / (self.gamma * m1 * m1 - .5 * (self.gamma - 1.)))
 
@@ -100,12 +105,35 @@ if __name__ == "__main__":
     print(f'Unit tests of Isentropic Flow')
     flow = IsentropicFlow()
     # Reference Isentropic Flow Values from Gas Dynamics, James John, Table A.1
-    unittestscalar("T/To Mach 1",flow.tt0(1),0.83333, 0.01)
-    unittestscalar("T/To Mach 2", flow.tt0(2), 0.5555, 0.01)
-    unittestscalar("P/Po Mach 1", flow.pp0(1), 0.5283, 0.01)
-    unittestscalar("P/Po Mach 2", flow.pp0(2), 0.1278, 0.01)
+    unittestscalar("T/To Mach 0.5", flow.tt0(0.5), 0.9524, 0.001)
+    unittestscalar("T/To Mach 1",flow.tt0(1),0.83333, 0.001)
+    unittestscalar("T/To Mach 2", flow.tt0(2), 0.5555, 0.001)
+    unittestscalar("P/Po Mach 0.5", flow.pp0(0.5), 0.8430, 0.001)
+    unittestscalar("P/Po Mach 1", flow.pp0(1), 0.5283, 0.001)
+    unittestscalar("P/Po Mach 2", flow.pp0(2), 0.1278, 0.001)
+    unittestscalar("Density M 0.5", flow.rr0(0.5), 0.8851, 0.001)
+    unittestscalar("Density M 1", flow.rr0(1), 0.6340, 0.001)
+    unittestscalar("Density M 2", flow.rr0(2), 0.2300, 0.001)
 
     # Reference P-M Values from Gas Dynamics, James John, Appendix D
-    unittestscalar("nu Mach 1", flow.nu(1), 0, 0.01)
-    unittestscalar("nu Mach 2", flow.nu(2), 26.380, 0.01)
-    
+    unittestscalar("nu Mach 1", flow.nu(1), 0, 0.001)
+    unittestscalar("nu Mach 2", flow.nu(2), 26.380, 0.001)
+
+    # Normal Shock, Gamma 1.4, Gas Dynamics, James John, Appendix B
+    unittestscalar("Normal Shock Mach gamma=1.4 M=1", flow.m2(1), 1.0, 0.0001)
+    unittestscalar("Normal Shock Mach gamma=1.4 M=2", flow.m2(2), 0.5774, 0.0001)
+    unittestscalar("Normal Shock Mach gamma=1.4 M=3", flow.m2(3), 0.4752, 0.0001)
+    unittestscalar("Normal Shock Mach gamma=1.4 M=5", flow.m2(5), 0.4152, 0.0001)
+
+    unittestscalar("Normal Shock Temp gamma=1.4 M=1", flow.tts(1), 1.0, 0.0001)
+    unittestscalar("Normal Shock Temp gamma=1.4 M=2", flow.tts(2), 1.688, 0.0001)
+
+    unittestscalar("Normal Shock Pressure gamma=1.4 M=1", flow.pps(1), 1.0, 0.0001)
+    unittestscalar("Normal Shock Pressure gamma=1.4 M=2", flow.pps(2), 4.500, 0.0001)
+
+    unittestscalar("Normal Shock Density gamma=1.4 M=1", flow.rrs(1), 1.0, 0.0001)
+    unittestscalar("Normal Shock Density gamma=1.4 M=2", flow.rrs(2), 4.500, 0.0001)
+
+    unittestscalar("Normal Shock Sonic Speed gamma=1.4 M=1", flow.aas(1), 1.0, 0.0001)
+    unittestscalar("Normal Shock Sonic Speed gamma=1.4 M=2", flow.aas(2), 4.500, 0.0001)
+
