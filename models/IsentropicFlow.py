@@ -26,10 +26,6 @@ class IsentropicFlow:
         #ToDo put in the selected item and calculate the mach number
         pass
 
-    def rayf(self, val, selectedItem):
-        t02t01 = 1 + val.q/(val.cp*val.t01)
-
-
 
     # Temperature Ratio: T/To = Temperature / Total Temperature
     def tt0(self,m):
@@ -137,4 +133,11 @@ if __name__ == "__main__":
     # Reference P-M Values from Gas Dynamics, James John, Appendix D
     unittestscalar("nu Mach 1", flow.nu(1), 0, 0.01)
     unittestscalar("nu Mach 2", flow.nu(2), 26.380, 0.01)
+
+    # Reference Table A.3 Anderson, Modern Compressible Flow 3rd ed.
+    unittestscalar("To/To* Mach 1", flow.t0t0sr(1), 1, 0.01)
+    unittestscalar("Po/Po* Mach 1", flow.p0p0sr(1), 1, 0.01)
+    unittestscalar("P/P* Mach 1", flow.ppsr(1), 1, 0.01)
+    unittestscalar("T/T* Mach 1", flow.ttsr(1), 1, 0.01)
+    unittestscalar("v/v* Mach 1", flow.vvsr(1), 1, 0.01)
     

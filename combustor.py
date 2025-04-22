@@ -7,6 +7,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from models.IsentropicFlow import IsentropicFlow
 
-
-def isentropicFlow(MachNo, gamma):
+# thermal choke check
+rayf = IsentropicFlow()
