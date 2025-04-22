@@ -6,11 +6,19 @@
   <component name="ChangeListManager">
     <list default="true" id="0be1d839-ab62-45b0-a583-eda84b07e9a1" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/IsentropicFlow.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/IsentropicFlow.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -34,7 +42,7 @@
     &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;rayleigh&quot;,
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;C:/Users/Christopher/PycharmProjects/scientificProject/models&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
@@ -117,7 +125,10 @@
       <workItem from="1738129083064" duration="2024000" />
       <workItem from="1738302578218" duration="12442000" />
       <workItem from="1738992907034" duration="397000" />
-      <workItem from="1739886861892" duration="446000" />
+      <workItem from="1739886861892" duration="2550000" />
+      <workItem from="1740336519313" duration="736000" />
+      <workItem from="1741428046236" duration="43000" />
+      <workItem from="1745167246165" duration="6728000" />
     </task>
     <servers />
   </component>

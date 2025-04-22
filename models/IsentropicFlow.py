@@ -26,6 +26,11 @@ class IsentropicFlow:
         #ToDo put in the selected item and calculate the mach number
         pass
 
+    def rayf(self, val, selectedItem):
+        t02t01 = 1 + val.q/(val.cp*val.t01)
+
+
+
     # Temperature Ratio: T/To = Temperature / Total Temperature
     def tt0(self,m):
         return np.pow((1.+(self.gamma-1)/2.*m*m),-1)
@@ -38,17 +43,41 @@ class IsentropicFlow:
     def rr0(self,m):
         return np.pow((1.+(self.gamma-1.)/2*m*m),-1/(self.gamma-1.))
 
+    # Temp over Temp star: T/T* = Temperature / Temperature(Mach=1)
     def tts(self,m):
         return self.tt0(self,m)*(self.gamma/2. + 0.5)
 
+    # Pressure over Pressure star: P/P*
     def pps(self,m):
         return self.pp0(self,m)*np.pow((self.gamma/2 +0.5),self.gamma/(self.gamma-1.))
 
+    # Density over Density star
     def rrs(self,m):
         return self.rr0(self,m)*np.pow((self.gamma/2 +0.5),1./(self.gamma-1.))
 
+    # Area Ratio for choked flow
     def aas(self,m):
         return 1./self.rrs(self,m)*np.sqrt(1./self.tts(self,m))/m
+
+    #total temperature max w/ heat flux
+    def t0t0sr(self,m):
+        return 2*(1+self.gamma)*np.pow(m,2)/np.pow(1+self.gamma*np.pow(m,2),2)*(1+((self.gamma - 1)/2)*np.pow(m,2))
+    #static temperature max w/ heat flux
+    def ttsr(self, m):
+        return np.pow(m,2)*np.pow(1+self.gamma,2)/np.pow((1+self.gamma*np.pow(m,2)),2)
+    #static pressure max with heat flux
+    def ppsr(self, m):
+        return (1+self.gamma)/(1+self.gamma*np.pow(m,2))
+    #total pressure max w/ heat flux
+    def p0p0sr(self, m):
+        return (1+self.gamma)/(1+self.gamma*np.pow(m,2))*np.pow((1+(self.gamma-1)/2*np.pow(m,2))/((self.gamma+1)/2),self.gamma/(self.gamma-1))
+    #specific volume (1/rho) max
+    def vvsr(self, m):
+        return (1+self.gamma)/(1+(self.gamma*np.pow(m,2)))*np.pow(m,2)
+    #change in enthalpy (max heat)
+    def sscpsr(self, m):
+        return np.log(np.pow(m,2)*np.pow((1+self.gamma)/(1+(self.gamma*np.pow(m,2))),(self.gamma+1)/self.gamma))
+
 
     # Prandtl Meyer Function
     def nu(self,m):
