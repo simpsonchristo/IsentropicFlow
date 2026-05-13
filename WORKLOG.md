@@ -146,10 +146,25 @@
 - [ ] Add `.env.example` with `ALLOWED_ORIGINS=https://simpsonaerospace.com`
 
 ### 4.3 Deployment
-- [ ] Create account / project on Render or Railway (free tier)
-- [ ] Connect GitHub repo → auto-deploy on push to `master`
-- [ ] Confirm CORS headers allow simpsonaerospace.com
-- [ ] Embed `<iframe>` on simpsonaerospace.com tools page
+
+Both target embedding sites run **WordPress** (PHP-only); the FastAPI backend must
+be hosted externally. The frontend calculator is delivered via `<iframe>` embed.
+
+**Backend deploy (Render)**
+- [ ] Create Render free web service; connect GitHub repo → auto-deploy on `master`
+- [ ] Add `Procfile`: `web: uvicorn api.app:app --host 0.0.0.0 --port $PORT`
+- [ ] Set `ALLOWED_ORIGINS=https://simpsonaerospace.com,https://charles-oneill.com`
+
+**simpsonaerospace.com** (full admin access)
+- [ ] Create WordPress page `/tools/isentropic-flow/`
+- [ ] Add Gutenberg Custom HTML block with `<iframe src="https://isentropicflow.onrender.com" ...>`
+- [ ] Optional: CNAME `tools.simpsonaerospace.com` → Render app for on-brand subdomain
+
+**charles-oneill.com/blog/** (access level TBD)
+- [ ] Confirm whether admin or editor access is available
+- [ ] If admin: same iframe embed process as simpsonaerospace.com
+- [ ] If editor only: coordinate with site owner to paste the iframe block
+- [ ] Minimum path: provide hosted URL to site owner for embedding
 
 ---
 
@@ -158,7 +173,8 @@
 | Date       | Branch                           | Work Done                                              |
 |------------|----------------------------------|--------------------------------------------------------|
 | 2025-02-25 | master                           | Initial commits: IsentropicFlow class, unit tests, normal shock functions |
-| 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Code review; created ARCHITECTURE.md, WORKLOG.md, updated README.md |
+| 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Code review; created ARCHITECTURE.md, WORKLOG.md, updated README.md and requirements.txt; merged PR #5 to master |
+| 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Deployment analysis: both simpsonaerospace.com and charles-oneill.com/blog/ are WordPress; FastAPI backend must be hosted externally (Render); frontend delivered via iframe; full CORS and integration details added to ARCHITECTURE.md and Phase 4.3 of WORKLOG.md |
 
 ---
 

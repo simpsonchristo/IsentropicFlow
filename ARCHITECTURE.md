@@ -166,22 +166,25 @@ app.js populates results table and triggers chart update
 
 ---
 
-## Embedding on simpsonaerospace.com
+## Embedding the Calculator
 
-The UI is designed to be embedded as an `<iframe>` on any page:
+The UI is designed to be embedded as an `<iframe>` on any WordPress page via a
+Gutenberg **Custom HTML** block:
 
 ```html
 <iframe
-  src="https://isentropicflow.yourdomain.com"
+  src="https://isentropicflow.onrender.com"
   width="100%"
-  height="800"
+  height="820"
   frameborder="0"
-  title="Isentropic Flow Calculator">
+  title="Isentropic Flow Calculator"
+  loading="lazy">
 </iframe>
 ```
 
-Alternatively, the `ui/` directory can be served directly from the same domain as
-a static sub-path (e.g. `simpsonaerospace.com/tools/isentropic`).
+Alternatively, the `ui/` directory can be served from a subdomain
+(e.g. `tools.simpsonaerospace.com`) with a reverse-proxy pointing at the
+Render/Railway app, making the tool fully on-brand with no iframe border.
 
 ---
 
@@ -226,7 +229,63 @@ All physics implementations are validated against published gas dynamics tables:
 
 ## Deployment Plan
 
-1. **Local dev**: `uvicorn api.app:app --reload`
-2. **Production**: Docker container or `Procfile`-based deploy to Render/Railway/Vercel
-3. **CORS**: Allow `simpsonaerospace.com` origin in FastAPI CORS middleware
-4. **Environment**: `ALLOWED_ORIGINS` env var controls CORS whitelist
+### Backend (shared by all embedding sites)
+
+The FastAPI app cannot run inside a WordPress server (PHP-only). It must be
+hosted on a separate Python-capable service and called by the browser via CORS.
+
+| Step | Action |
+|------|--------|
+| 1 | `uvicorn api.app:app --reload` — local dev |
+| 2 | Push to GitHub; connect repo to **Render** free web service |
+| 3 | Set env var `ALLOWED_ORIGINS` to comma-separated list of allowed origins |
+| 4 | Add `Procfile`: `web: uvicorn api.app:app --host 0.0.0.0 --port $PORT` |
+
+### Target Embedding Sites — Comparison
+
+Both target sites run **WordPress**. WordPress is PHP-based and cannot host
+Python processes directly, so the embedding approach is identical for both;
+the differences are access level and integration depth.
+
+| Factor | simpsonaerospace.com | charles-oneill.com/blog/ |
+|--------|----------------------|--------------------------|
+| Platform | WordPress | WordPress |
+| Your access level | Full admin | Depends on arrangement with site owner |
+| Backend hosting | External — Render / Railway | Same external service |
+| Frontend delivery | iframe or subdomain | iframe (if owner allows raw HTML in posts) |
+| Custom domain for tool | Yes — `tools.simpsonaerospace.com` | Unlikely without owner's DNS access |
+| CORS origin to allow | `https://simpsonaerospace.com` | `https://charles-oneill.com` |
+| On-brand integration depth | Full control (subdomain, custom CSS) | Limited to iframe unless owner cooperates |
+
+#### simpsonaerospace.com (your site — full control)
+
+Recommended integration path:
+1. Create a WordPress page at `/tools/isentropic-flow/`
+2. Add a **Gutenberg → Custom HTML** block with the `<iframe>` snippet above
+3. Optionally: point `tools.simpsonaerospace.com` via CNAME to the Render app
+   for a seamless no-border experience
+
+#### charles-oneill.com/blog/ (external site)
+
+- If you have **admin** access: identical process to simpsonaerospace.com
+- If you have **editor/author** access only: WordPress blocks raw `<iframe>` tags
+  for non-admins by default; the site owner must either whitelist the tag or paste
+  the block themselves
+- Minimum viable path: share the hosted URL — owner pastes a single iframe block
+
+### CORS Configuration
+
+```python
+# api/app.py
+import os
+from fastapi.middleware.cors import CORSMiddleware
+
+origins = os.getenv("ALLOWED_ORIGINS", "http://localhost").split(",")
+app.add_middleware(CORSMiddleware, allow_origins=origins,
+                   allow_methods=["GET", "POST"], allow_headers=["*"])
+```
+
+Set on Render:
+```
+ALLOWED_ORIGINS=https://simpsonaerospace.com,https://charles-oneill.com
+```
