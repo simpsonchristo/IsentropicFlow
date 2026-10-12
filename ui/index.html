@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compressible Flow Calculator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <span class="header-title">Compressible Flow Calculator</span>
+    <span class="header-sub">Isentropic · Normal Shock · Oblique Shock · Fanno · Rayleigh</span>
+  </div>
+</header>
+
+<nav class="tab-nav" role="tablist">
+  <button class="tab active" data-tab="ifr"     role="tab" aria-selected="true">Isentropic</button>
+  <button class="tab"        data-tab="nsr"     role="tab">Normal Shock</button>
+  <button class="tab"        data-tab="osr"     role="tab">Oblique Shock</button>
+  <button class="tab"        data-tab="fanno"   role="tab">Fanno</button>
+  <button class="tab"        data-tab="rayleigh" role="tab">Rayleigh</button>
+</nav>
+
+<main>
+
+  <!-- ── Isentropic ─────────────────────────────────────────────────── -->
+  <section id="panel-ifr" class="panel active" role="tabpanel">
+    <div class="solver-layout">
+      <div class="input-card">
+        <h2>Isentropic Flow</h2>
+        <p class="solver-desc">Adiabatic, frictionless duct. Given M and γ, returns T/T₀, P/P₀, ρ/ρ₀, A/A*.</p>
+        <div class="field-group">
+          <label for="ifr-mach">Mach Number (M)</label>
+          <input id="ifr-mach" type="number" min="0.01" step="0.1" value="2.0">
+        </div>
+        <div class="field-group">
+          <label for="ifr-gamma">Ratio of Specific Heats (γ)</label>
+          <input id="ifr-gamma" type="number" min="1.01" max="2.5" step="0.01" value="1.4">
+        </div>
+        <div class="error-msg" id="ifr-error"></div>
+        <button class="calc-btn" data-solver="ifr">Calculate</button>
+      </div>
+      <div class="results-card">
+        <div id="ifr-results" class="results-placeholder">Enter values and click Calculate.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Normal Shock ───────────────────────────────────────────────── -->
+  <section id="panel-nsr" class="panel" role="tabpanel">
+    <div class="solver-layout">
+      <div class="input-card">
+        <h2>Normal Shock</h2>
+        <p class="solver-desc">Standing normal shock. Given upstream M₁ and γ, returns downstream conditions and ratios.</p>
+        <div class="field-group">
+          <label for="nsr-mach">Upstream Mach (M₁)</label>
+          <input id="nsr-mach" type="number" min="1.0" step="0.1" value="2.0">
+        </div>
+        <div class="field-group">
+          <label for="nsr-gamma">γ</label>
+          <input id="nsr-gamma" type="number" min="1.01" max="2.5" step="0.01" value="1.4">
+        </div>
+        <div class="error-msg" id="nsr-error"></div>
+        <button class="calc-btn" data-solver="nsr">Calculate</button>
+      </div>
+      <div class="results-card">
+        <div id="nsr-results" class="results-placeholder">Enter values and click Calculate.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Oblique Shock ──────────────────────────────────────────────── -->
+  <section id="panel-osr" class="panel" role="tabpanel">
+    <div class="solver-layout">
+      <div class="input-card">
+        <h2>Oblique Shock</h2>
+        <p class="solver-desc">Weak oblique shock. Given M₁, deflection angle θ, and γ, returns wave angle β and downstream conditions.</p>
+        <div class="field-group">
+          <label for="osr-mach">Upstream Mach (M₁)</label>
+          <input id="osr-mach" type="number" min="1.0" step="0.1" value="3.0">
+        </div>
+        <div class="field-group">
+          <label for="osr-theta">Deflection Angle θ (°)</label>
+          <input id="osr-theta" type="number" min="0.1" max="45" step="0.5" value="20">
+        </div>
+        <div class="field-group">
+          <label for="osr-gamma">γ</label>
+          <input id="osr-gamma" type="number" min="1.01" max="2.5" step="0.01" value="1.4">
+        </div>
+        <div class="error-msg" id="osr-error"></div>
+        <button class="calc-btn" data-solver="osr">Calculate</button>
+      </div>
+      <div class="results-card">
+        <div id="osr-results" class="results-placeholder">Enter values and click Calculate.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Fanno ─────────────────────────────────────────────────────── -->
+  <section id="panel-fanno" class="panel" role="tabpanel">
+    <div class="solver-layout">
+      <div class="input-card">
+        <h2>Fanno Flow</h2>
+        <p class="solver-desc">Adiabatic flow with friction in a constant-area duct. Ratios are relative to sonic conditions (*).</p>
+        <div class="field-group">
+          <label for="fanno-mach">Mach Number (M)</label>
+          <input id="fanno-mach" type="number" min="0.01" step="0.1" value="0.5">
+        </div>
+        <div class="field-group">
+          <label for="fanno-gamma">γ</label>
+          <input id="fanno-gamma" type="number" min="1.01" max="2.5" step="0.01" value="1.4">
+        </div>
+        <div class="error-msg" id="fanno-error"></div>
+        <button class="calc-btn" data-solver="fanno">Calculate</button>
+      </div>
+      <div class="results-card">
+        <div id="fanno-results" class="results-placeholder">Enter values and click Calculate.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Rayleigh ───────────────────────────────────────────────────── -->
+  <section id="panel-rayleigh" class="panel" role="tabpanel">
+    <div class="solver-layout">
+      <div class="input-card">
+        <h2>Rayleigh Flow</h2>
+        <p class="solver-desc">Frictionless flow with heat addition in a constant-area duct. Ratios are relative to sonic conditions (*).</p>
+        <div class="field-group">
+          <label for="rayleigh-mach">Mach Number (M)</label>
+          <input id="rayleigh-mach" type="number" min="0.01" step="0.1" value="0.5">
+        </div>
+        <div class="field-group">
+          <label for="rayleigh-gamma">γ</label>
+          <input id="rayleigh-gamma" type="number" min="1.01" max="2.5" step="0.01" value="1.4">
+        </div>
+        <div class="error-msg" id="rayleigh-error"></div>
+        <button class="calc-btn" data-solver="rayleigh">Calculate</button>
+      </div>
+      <div class="results-card">
+        <div id="rayleigh-results" class="results-placeholder">Enter values and click Calculate.</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Chart ─────────────────────────────────────────────────────────── -->
+<section class="chart-section">
+  <div class="chart-controls">
+    <div class="field-group inline">
+      <label for="chart-var">Plot variable</label>
+      <select id="chart-var"></select>
+    </div>
+    <div class="field-group inline">
+      <label for="chart-mmin">M from</label>
+      <input id="chart-mmin" type="number" value="0.1" min="0.01" step="0.1" style="width:5rem">
+    </div>
+    <div class="field-group inline">
+      <label for="chart-mmax">to</label>
+      <input id="chart-mmax" type="number" value="5.0" min="0.1" step="0.5" style="width:5rem">
+    </div>
+    <button id="chart-update-btn" class="chart-btn">Update Chart</button>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="flow-chart"></canvas>
+  </div>
+</section>
+
+<footer class="site-footer">
+  Formulas from Anderson <em>Modern Compressible Flow</em> &amp; James John <em>Gas Dynamics</em>.
+  γ = 1.4 (air) unless changed.
+</footer>
+
+<script src="chart.umd.js"></script>
+<script src="physics.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

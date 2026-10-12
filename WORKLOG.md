@@ -91,14 +91,14 @@
 > FastAPI / REST API phase is removed. Python models remain as CLI/reference only.
 
 ### 2.1 ui/physics.js — core math
-- [ ] `tt0(g,m)`, `pp0(g,m)`, `rr0(g,m)` — isentropic ratios
-- [ ] `aa(g,m)` — area-Mach ratio A/A*
-- [ ] `m2(g,m)`, `tts(g,m)`, `pps(g,m)`, `rrs(g,m)` — normal shock
-- [ ] `nu(g,m)` — Prandtl-Meyer angle (use `Math.atan`, `Math.PI` — not hardcoded)
-- [ ] `mdb(g,m1,theta)` — oblique shock wave angle β (cubic polynomial solve)
-- [ ] Fanno flow: `fTT`, `fPP`, `fP0P0`, `fUU`, `fFLD`
-- [ ] Rayleigh flow: `rTT`, `rPP`, `rT0T0`, `rP0P0`, `rUU`
-- [ ] Inverse solvers: Newton-Raphson Mach lookup from any ratio, `|Δm| < 1e-6`
+- [x] `tt0(g,m)`, `pp0(g,m)`, `rr0(g,m)` — isentropic ratios
+- [x] `aa(g,m)` — area-Mach ratio A/A*
+- [x] `nsM2`, `nsP2P1`, `nsRho2Rho1`, `nsT2T1`, `nsP02P01` — normal shock (correct formulas)
+- [x] `nu(g,m)` — Prandtl-Meyer angle (Math.atan, Math.PI)
+- [x] `mdb(g,m1,theta)` — oblique shock wave angle β (Newton-Raphson on θ-β-M)
+- [x] Fanno flow: `fannoTT`, `fannoPP`, `fannoP0P0`, `fannoUU`, `fannoFLD`
+- [x] Rayleigh flow: `rayleighTT`, `rayleighPP`, `rayleighT0T0`, `rayleighP0P0`, `rayleighUU`
+- [x] Inverse solvers: closed-form for isentropic, bisection for A/A* and Fanno/Rayleigh; all self-tests pass ±0.01%
 
 ### 2.2 Cross-validation
 - [ ] Write `tests/test_physics_js.py` — runs Node.js on `physics.js`, compares
@@ -109,26 +109,26 @@
 ## Phase 3 — Web UI
 
 ### 3.1 Layout & structure (ui/)
-- [ ] `ui/index.html` — semantic HTML, tab-based solver selector, no external deps
-- [ ] `ui/styles.css` — dark aerospace theme, responsive grid, phone-width safe
-- [ ] `ui/app.js` — tab switching, reads inputs, calls physics.js, renders table + chart
+- [x] `ui/index.html` — semantic HTML, tab-based solver selector, no external deps
+- [x] `ui/styles.css` — dark aerospace theme, responsive grid, phone-width safe
+- [x] `ui/app.js` — tab switching, reads inputs, calls physics.js, renders table + chart
 
 ### 3.2 Solver panels
-- [ ] Isentropic Flow (IFR) — inputs: M (or any ratio), γ; outputs: T/T₀, P/P₀, ρ/ρ₀, A/A*
-- [ ] Normal Shock (NSR) — inputs: M₁, γ; outputs: M₂ + all ratios
-- [ ] Oblique Shock (OSR) — inputs: M₁, θ or β, γ; weak/strong toggle
-- [ ] Fanno Flow — inputs: M, γ; outputs: all Fanno ratios + 4fL*/D
-- [ ] Rayleigh Flow — inputs: M, γ; outputs: all Rayleigh ratios
+- [x] Isentropic Flow (IFR) — inputs: M (or any ratio), γ; outputs: T/T₀, P/P₀, ρ/ρ₀, A/A*
+- [x] Normal Shock (NSR) — inputs: M₁, γ; outputs: M₂ + all ratios
+- [x] Oblique Shock (OSR) — inputs: M₁, θ or β, γ; weak/strong toggle
+- [x] Fanno Flow — inputs: M, γ; outputs: all Fanno ratios + 4fL*/D
+- [x] Rayleigh Flow — inputs: M, γ; outputs: all Rayleigh ratios
 
 ### 3.3 Visualization
-- [ ] Chart.js line chart — any variable vs. Mach range
-- [ ] Variable selector dropdown
-- [ ] Chart.js bundled locally (no CDN)
+- [x] Chart.js line chart — any variable vs. Mach range
+- [x] Variable selector dropdown
+- [x] Chart.js bundled locally (no CDN)
 
 ### 3.4 UX polish
-- [ ] Input validation (M ≤ 0 or γ ≤ 1 shows inline error, no alert())
+- [x] Input validation (M ≤ 0 or γ ≤ 1 shows inline error, no alert())
 - [ ] Copy-to-clipboard for results table
-- [ ] Mobile-responsive layout
+- [~] Mobile-responsive layout (grid collapses at 640px; not device-tested)
 
 ---
 
@@ -145,7 +145,7 @@
 
 ### 4.3 Deployment
 
-Every push to `master` → GitHub Actions syncs `ui/` to S3 and invalidates CloudFront.
+Every push to `master` → GitHub Actions FTP-syncs `ui/` to Namecheap (`/public_html/tools/isentropic/`).
 
 **simpsonaerospace.com**
 - [ ] Create WordPress page `/tools/isentropic-flow-calculator/`
@@ -168,6 +168,20 @@ Every push to `master` → GitHub Actions syncs `ui/` to S3 and invalidates Clou
 | 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Deployment analysis: both simpsonaerospace.com and charles-oneill.com/blog/ are WordPress; FastAPI backend must be hosted externally (Render); frontend delivered via iframe; full CORS and integration details added to ARCHITECTURE.md and Phase 4.3 of WORKLOG.md |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Hosting confirmed from WP admin page: Namecheap cPanel shared hosting (LiteSpeed server, Beaver Builder, WP 5.8.18). Researched VT AOE 3114 calculator — confirmed pure client-side JS, no backend. Architecture revised: no FastAPI/backend needed; all math in JavaScript; static files to AWS S3 + CloudFront. Rewrote ARCHITECTURE.md, DEPLOYMENT.md, deploy.yml (aws s3 sync on push to master), WORKLOG phases 2-4; removed Render/FastAPI references |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Simplified deployment: S3/CloudFront replaced with direct FTP to Namecheap (existing host). Updated deploy.yml (SamKirkland/FTP-Deploy-Action), DEPLOYMENT.md (3-secret setup, cPanel FTP steps, LiteSpeed cache note), ARCHITECTURE.md (hosting diagram, tech stack, embed section) |
+| 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built ui/physics.js: all compressible flow math in JS (isentropic, normal shock, oblique shock, Prandtl-Meyer, Fanno, Rayleigh, inverse solvers); all self-tests pass against James John tables |
+| 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built web UI (index.html, styles.css, app.js, local chart.umd.js); Playwright-verified; chart follows Mack plot recipe (white plot, black box, 4-sided major/minor ticks, governing equation on chart) |
+
+---
+
+## Alternative Deployment Option (Future Exploration)
+
+Namecheap cPanel also supports Python app deployment (Setup Python App in cPanel → select
+Python version → point to a WSGI entry point). This would allow running a FastAPI/Flask
+backend on the same host that serves simpsonaerospace.com, eliminating the need for FTP
+sync and enabling server-side features in the future (e.g. batch export, saved sessions).
+Identified during Phase 3 planning but not pursued — the pure-JS static approach is
+simpler and avoids PHP/Python hosting constraints. Revisit if the FTP workflow hits issues
+or a backend is needed.
 
 ---
 
