@@ -36,13 +36,16 @@ existing Namecheap hosting.
 
 1. Log in to **Namecheap → cPanel** (usually at `simpsonaerospace.com/cpanel`)
 2. Go to **FTP Accounts**
-3. First create the target folder in **File Manager**: inside `public_html/`, create `tools`, then inside it `isentropic`.
-4. In FTP Accounts, create a dedicated account:
+3. In FTP Accounts, create a dedicated account whose **Directory** is the cPanel home root
+   (clear the pre-filled `simpsonaerospace.com/<login>` value so the field is empty / `/`).
+   cPanel FTP accounts are jailed to their directory: they cannot `cd` above it, and `/` means that
+   directory. A jailed account (verified by probe) cannot reach `public_html/` from a subfolder, so
+   `deploy.yml` uses the absolute path `server-dir: /public_html/tools/isentropic/` from the home root.
    - **Log In**: e.g. `github@simpsonaerospace.com`
-   - **Directory**: `public_html/tools/isentropic` (the field is relative to the cPanel home
-     directory; cPanel pre-fills `simpsonaerospace.com/<login>`, so **overwrite it**). The account's
-     home must be exactly this folder, because `deploy.yml` uses `server-dir: ./`.
    - **Quota**: Unlimited
+   - Note: a root-level account can write anywhere under your home directory, including WordPress.
+     Use a long random password, and rotate it if the GitHub secret is ever exposed.
+4. The action creates `tools/isentropic` on first deploy; no need to make it by hand.
 5. Note down: FTP hostname, username, password. Use `simpsonaerospace.com` (or the server IP) as
    the hostname if `ftp.simpsonaerospace.com` has no DNS record: it did not resolve for this domain.
 
@@ -152,6 +155,6 @@ in `.github/workflows/deploy.yml`.
 | Files upload but page shows 403 | Folder permissions too restrictive | In cPanel File Manager, right-click folder → Permissions → set to 755 |
 | Page shows directory listing instead of calculator | No `index.html` in the folder | Confirm `ui/index.html` exists and was uploaded |
 | Changes not visible after deploy | LiteSpeed Cache serving stale version | In WP admin → LiteSpeed Cache → Purge All, or wait for cache TTL |
-| Deploy succeeds but site shows a WordPress 404 | FTP account home is not `public_html/tools/isentropic`, files landed elsewhere | Check where File Manager shows `index.html`; fix the account's Directory in FTP Accounts, then delete the stray copy |
+| Deploy succeeds but site shows a WordPress 404 | FTP account home is not the cPanel home root, so `/public_html/...` resolved inside a subfolder | Check where File Manager shows `index.html`; recreate the FTP account with its Directory at the home root, then delete the stray copy |
 | `getaddrinfo ENOTFOUND` | `FTP_SERVER` hostname does not resolve | Use `simpsonaerospace.com` or the server IP |
 | `deploy.yml` runs but skips all files | FTP action `.ftp-deploy-sync-state.json` is stale | Delete `.ftp-deploy-sync-state.json` from the server path via cPanel File Manager and re-run |
