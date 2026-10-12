@@ -42,15 +42,15 @@ Visitor's browser
 │  └──────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────┘
          ▲
-         │  served as static files (no PHP, no Python)
+         │  served as static files by LiteSpeed (no PHP, no Python)
          │
-┌────────┴────────────────────────────────────────┐
-│  AWS S3 bucket (static website hosting)         │
-│  + CloudFront CDN                               │
-│  → tools.simpsonaerospace.com  (CNAME)          │
-└────────────────────────────────────────────────┘
+┌────────┴──────────────────────────────────────────────────┐
+│  Namecheap cPanel shared hosting                          │
+│  /public_html/tools/isentropic/                           │
+│  → simpsonaerospace.com/tools/isentropic/                 │
+└───────────────────────────────────────────────────────────┘
          ▲
-         │  git push to master → GitHub Actions → aws s3 sync
+         │  git push to master → GitHub Actions → FTP sync
          │
 ┌────────┴───────────────┐
 │  GitHub repo           │
@@ -122,11 +122,11 @@ app.js updates results table and chart — instant, no latency
 | Layer | Choice | Rationale |
 |---|---|---|
 | Web calculations | Vanilla JavaScript | Runs in browser, zero dependencies, no server needed |
-| Web UI | Plain HTML + CSS | No build step, embeds anywhere, works in any iframe |
+| Web UI | Plain HTML + CSS | No build step, lives on same domain, no iframe required |
 | Charts | Chart.js (bundled) | Small, pure JS line charts |
-| Static hosting | AWS S3 + CloudFront | Already on your AWS account, ~$0.01/month, global CDN |
-| Custom domain | Namecheap CNAME → CloudFront | `tools.simpsonaerospace.com` |
-| CI/CD | GitHub Actions | `aws s3 sync` on push to master; JS unit tests on PRs |
+| Static hosting | Namecheap cPanel (existing) | LiteSpeed serves static files natively; no new services |
+| URL | `simpsonaerospace.com/tools/isentropic/` | Same domain as WordPress site, no CNAME needed |
+| CI/CD | GitHub Actions + FTP | `SamKirkland/FTP-Deploy-Action` syncs `ui/` on push to master |
 | Python reference | numpy, scipy, matplotlib | CLI tool and JS cross-check |
 
 ---
@@ -137,15 +137,20 @@ app.js updates results table and chart — instant, no latency
 Confirmed from WordPress admin inspection:
 - **WordPress**: 5.8.18 on Namecheap cPanel shared hosting (LiteSpeed server)
 - **Page builder**: Beaver Builder
-- **Implication**: PHP-only host. No Python possible. Pure static files on S3 is the right fit.
+- **Implication**: PHP-only host, no Python possible. LiteSpeed serves static
+  HTML/JS files natively — `ui/` deploys directly to Namecheap via FTP.
 
 ### Embedding on WordPress
-The static UI is served from S3/CloudFront. WordPress embeds it via a single iframe
-in a Gutenberg Custom HTML block or Beaver Builder HTML module:
+The calculator is served from the same domain as the WordPress site, so it can
+be linked directly as a standalone page at
+`simpsonaerospace.com/tools/isentropic/` — no iframe required.
+
+For embedding inside an existing WordPress page, use a Gutenberg Custom HTML
+block or Beaver Builder HTML module with an iframe pointing to the same path:
 
 ```html
 <iframe
-  src="https://tools.simpsonaerospace.com"
+  src="https://simpsonaerospace.com/tools/isentropic/"
   width="100%"
   height="820"
   frameborder="0"
@@ -154,8 +159,7 @@ in a Gutenberg Custom HTML block or Beaver Builder HTML module:
 </iframe>
 ```
 
-No CORS configuration required — the iframe loads an independent origin and
-all computation stays inside it.
+No CORS configuration required — same origin throughout.
 
 ---
 
@@ -202,12 +206,10 @@ See `DEPLOYMENT.md` for step-by-step instructions.
 
 | Step | Action |
 |---|---|
-| 1 | Create S3 bucket with static website hosting enabled |
-| 2 | Create CloudFront distribution pointed at the bucket |
-| 3 | Add Namecheap CNAME: `tools` → CloudFront domain |
-| 4 | Add AWS credentials to GitHub Secrets |
-| 5 | Push to master → GitHub Actions syncs `ui/` to S3 and invalidates CloudFront |
-| 6 | Add iframe to WordPress page |
+| 1 | Get FTP credentials from Namecheap cPanel → FTP Accounts |
+| 2 | Add `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` to GitHub Secrets |
+| 3 | Push to master → GitHub Actions FTP-syncs `ui/` to `/public_html/tools/isentropic/` |
+| 4 | Link to or iframe `simpsonaerospace.com/tools/isentropic/` from a WordPress page |
 
 ### Site Comparison
 

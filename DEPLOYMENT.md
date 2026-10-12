@@ -1,149 +1,88 @@
 # Deployment Guide
 
-## Architecture Decision: Why No Backend Server
+## Architecture
 
-All compressible flow calculations are closed-form formulas or simple Newton-Raphson
-iterations. These run instantly in JavaScript — no Python server is needed. This matches
-the approach used by the Virginia Tech AOE 3114 calculator and eliminates:
+The calculator is pure HTML + JavaScript — all physics runs in the browser.
+The `ui/` folder is a set of static files served directly by the LiteSpeed
+web server already running on your Namecheap host.
 
-- Backend hosting costs and management
-- CORS configuration
-- Cold start latency
-- Server-side failures
+```
+push to master
+    → GitHub Actions: FTP sync ui/ → Namecheap /public_html/tools/isentropic/
+    → live at simpsonaerospace.com/tools/isentropic/
+    → WordPress page iframes or links to it
+```
 
-The web calculator is a **static HTML + JavaScript page** deployed to **AWS S3**,
-served via **CloudFront**, and embedded in WordPress via a single `<iframe>`.
+No new services, no AWS setup, no extra accounts. Everything stays on your
+existing Namecheap hosting.
 
 ---
 
 ## Your Hosting Setup
 
-| Site | Platform | Host |
-|---|---|---|
-| simpsonaerospace.com | WordPress 5.8.18 | Namecheap cPanel, LiteSpeed server |
-| Calculator | Static HTML/JS | AWS S3 + CloudFront (your existing account) |
+| | Detail |
+|---|---|
+| Host | Namecheap cPanel shared hosting |
+| Server | LiteSpeed |
+| WordPress | 5.8.18 with Beaver Builder |
+| Calculator path | `simpsonaerospace.com/tools/isentropic/` |
+| Deploy method | GitHub Actions → FTP |
 
 ---
 
-## One-time AWS Setup
+## One-time Setup
 
-### Step 1 — Create an S3 bucket
+### Step 1 — Get your Namecheap FTP credentials
 
-1. Go to **AWS Console → S3 → Create bucket**
-2. Name it (e.g. `isentropicflow-calculator`) — name must be globally unique
-3. **Uncheck** "Block all public access"
-4. After creation → **Properties tab → Static website hosting → Enable**
-   - Index document: `index.html`
-   - Error document: `index.html`
-5. **Permissions tab → Bucket policy** — paste this (replace `YOUR-BUCKET-NAME`):
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [{
-       "Effect": "Allow",
-       "Principal": "*",
-       "Action": "s3:GetObject",
-       "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
-     }]
-   }
-   ```
+1. Log in to **Namecheap → cPanel** (usually at `simpsonaerospace.com/cpanel`)
+2. Go to **FTP Accounts**
+3. Either use the default cPanel FTP account, or create a dedicated one:
+   - **Log In**: e.g. `deploy@simpsonaerospace.com`
+   - **Directory**: `/public_html/tools/isentropic`  (restricts it to this folder only)
+   - **Quota**: Unlimited
+4. Note down: FTP hostname (usually `ftp.simpsonaerospace.com`), username, password
 
-### Step 2 — Create a CloudFront distribution
-
-1. Go to **AWS Console → CloudFront → Create distribution**
-2. **Origin domain**: select your S3 bucket's website endpoint
-   (use the website endpoint URL, not the REST endpoint)
-3. **Viewer protocol policy**: Redirect HTTP to HTTPS
-4. **Default root object**: `index.html`
-5. Click **Create distribution** — takes ~5 minutes to deploy
-6. Copy the **Distribution domain name** (e.g. `d1abc123xyz.cloudfront.net`)
-
-### Step 3 — Set up custom domain (tools.simpsonaerospace.com)
-
-In **Namecheap → Domain List → simpsonaerospace.com → Manage → Advanced DNS**:
-
-| Type | Host | Value | TTL |
-|---|---|---|---|
-| CNAME | `tools` | `d1abc123xyz.cloudfront.net` | Automatic |
-
-Then in CloudFront → your distribution → **Edit**:
-- Add `tools.simpsonaerospace.com` under **Alternate domain names (CNAMEs)**
-- Request a free ACM certificate (AWS Certificate Manager) for `tools.simpsonaerospace.com`
-
-### Step 4 — Create an IAM user for GitHub Actions
-
-1. Go to **AWS Console → IAM → Users → Create user**
-2. Name: `github-actions-isentropicflow`
-3. **Permissions → Attach policies directly** — create a custom inline policy:
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Effect": "Allow",
-         "Action": ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
-         "Resource": [
-           "arn:aws:s3:::YOUR-BUCKET-NAME",
-           "arn:aws:s3:::YOUR-BUCKET-NAME/*"
-         ]
-       },
-       {
-         "Effect": "Allow",
-         "Action": "cloudfront:CreateInvalidation",
-         "Resource": "arn:aws:cloudfront::YOUR-ACCOUNT-ID:distribution/YOUR-DISTRIBUTION-ID"
-       }
-     ]
-   }
-   ```
-4. After creating the user → **Security credentials → Create access key** (CLI use case)
-5. Save the **Access Key ID** and **Secret Access Key** — shown only once
-
-### Step 5 — Add secrets to GitHub
+### Step 2 — Add FTP credentials to GitHub Secrets
 
 Go to **GitHub → simpsonchristo/IsentropicFlow → Settings → Secrets and variables → Actions → New repository secret**:
 
 | Secret name | Value |
 |---|---|
-| `AWS_ACCESS_KEY_ID` | The access key ID from Step 4 |
-| `AWS_SECRET_ACCESS_KEY` | The secret access key from Step 4 |
-| `AWS_REGION` | Your AWS region (e.g. `us-east-1`) |
-| `S3_BUCKET_NAME` | Your bucket name (e.g. `isentropicflow-calculator`) |
-| `CLOUDFRONT_DISTRIBUTION_ID` | From CloudFront dashboard (e.g. `E1ABC123XYZ`) |
+| `FTP_SERVER` | `ftp.simpsonaerospace.com` |
+| `FTP_USERNAME` | Your FTP username (e.g. `deploy@simpsonaerospace.com`) |
+| `FTP_PASSWORD` | Your FTP password |
 
----
+### Step 3 — Create the target folder (optional)
 
-## How Deployments Work After Setup
+Namecheap's FTP action will create the folder automatically on first deploy,
+but you can also create it manually in cPanel → **File Manager**:
+navigate to `public_html/` and create a folder named `tools`, then inside
+it create `isentropic`.
 
-Every push to `master` automatically:
-1. GitHub Actions runs `.github/workflows/deploy.yml`
-2. Syncs the `ui/` folder to your S3 bucket (`--delete` removes old files)
-3. Invalidates the CloudFront cache so visitors see changes within seconds
+### Step 4 — Push to master to trigger first deploy
 
-```
-You push code to master
-    → GitHub Actions: aws s3 sync ui/ s3://bucket/ --delete
-    → GitHub Actions: aws cloudfront create-invalidation --paths "/*"
-    → Live at tools.simpsonaerospace.com within ~30 seconds
+```bash
+git commit --allow-empty -m "trigger initial deploy"
+git push origin master
 ```
 
-No releases needed — every push to master is a deploy. If you want to gate
-deploys to explicit releases instead, change `on: push: branches: [master]`
-to `on: release: types: [published]` in `.github/workflows/deploy.yml`.
+Watch **GitHub → Actions** for the deploy run. It will FTP-sync the `ui/`
+folder to `/public_html/tools/isentropic/` on your Namecheap server.
 
 ---
 
 ## Embedding on simpsonaerospace.com
 
-Once `tools.simpsonaerospace.com` is live:
+Once deployed, the calculator lives at:
+`https://simpsonaerospace.com/tools/isentropic/`
 
-1. Log in to `simpsonaerospace.com/wp-admin/`
-2. **Pages → Add New**
-3. Title: **Isentropic Flow Calculator**
-4. In Gutenberg, click **+** → **Custom HTML**
-5. Paste:
+**Option A — Dedicated WordPress page (recommended)**
+1. **Pages → Add New**, title: `Isentropic Flow Calculator`
+2. Set the permalink to `/tools/isentropic-flow/`
+3. In Gutenberg, add a **Custom HTML** block:
    ```html
    <iframe
-     src="https://tools.simpsonaerospace.com"
+     src="https://simpsonaerospace.com/tools/isentropic/"
      width="100%"
      height="820"
      frameborder="0"
@@ -151,31 +90,53 @@ Once `tools.simpsonaerospace.com` is live:
      loading="lazy">
    </iframe>
    ```
-6. **Publish**
+4. Publish
 
-If building in **Beaver Builder**: drag an **HTML module** into the row,
-paste the same `<iframe>` snippet, and save.
+**Option B — Beaver Builder**
+Drag an **HTML module** into a row and paste the same `<iframe>` snippet.
+
+**Option C — Link directly (no iframe)**
+Because the calculator is on the same domain, you can also just link to
+`simpsonaerospace.com/tools/isentropic/` as a standalone page — no embedding
+needed. This is the cleanest option if you want a full-page calculator
+without a WordPress chrome wrapper.
 
 ---
 
 ## Sharing with charles-oneill.com
 
-The calculator URL (`https://tools.simpsonaerospace.com`) works anywhere.
-For charles-oneill.com, paste the same iframe snippet into a post or page.
-If the site owner doesn't allow raw HTML blocks for non-admins, share the
-direct URL — it works as a standalone page in any browser.
+Share the URL `https://simpsonaerospace.com/tools/isentropic/` — it works
+as a standalone page in any browser. The site owner can embed it with the
+same `<iframe>` snippet above if they want it inside a post.
 
 ---
 
-## Cost Estimate (AWS)
+## How Deployments Work After Setup
 
-| Service | Estimated cost |
-|---|---|
-| S3 storage (< 1 MB of HTML/JS/CSS) | < $0.01 / month |
-| S3 requests | < $0.01 / month at typical traffic |
-| CloudFront (first 1 TB transfer free) | $0 / month under free tier |
-| ACM certificate | Free |
-| **Total** | **~$0 / month** |
+Every push to `master` automatically:
+1. GitHub Actions runs `.github/workflows/deploy.yml`
+2. `SamKirkland/FTP-Deploy-Action` syncs only changed files in `ui/` to Namecheap
+3. Unchanged files are skipped — deploys are fast
+
+```
+You edit ui/physics.js and push to master
+    → only physics.js is uploaded (delta sync)
+    → live within ~15 seconds
+```
+
+To gate deploys to explicit releases instead of every push, change
+`on: push: branches: [master]` to `on: release: types: [published]`
+in `.github/workflows/deploy.yml`.
+
+---
+
+## GitHub Secrets Reference
+
+| Secret | Example value | Where to find it |
+|---|---|---|
+| `FTP_SERVER` | `ftp.simpsonaerospace.com` | Namecheap cPanel → FTP Accounts |
+| `FTP_USERNAME` | `deploy@simpsonaerospace.com` | Namecheap cPanel → FTP Accounts |
+| `FTP_PASSWORD` | (your FTP password) | Set when creating the FTP account |
 
 ---
 
@@ -183,8 +144,8 @@ direct URL — it works as a standalone page in any browser.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| iframe shows blank page | S3 bucket not public or static hosting not enabled | Re-check bucket policy and static website hosting settings |
-| Calculator loads but shows stale content | CloudFront cache not invalidated | Check GitHub Actions ran; manually invalidate from CloudFront console |
-| `tools.simpsonaerospace.com` shows SSL error | ACM cert not issued or CNAME not propagated | Wait up to 48 h for DNS; verify CNAME in Namecheap |
-| GitHub Actions fails at `aws s3 sync` | Wrong secret name or IAM permissions too narrow | Verify all 5 secrets are set; check IAM policy includes `s3:ListBucket` |
-| S3 website endpoint returns 403 | Bucket policy missing or incorrect | Re-paste the bucket policy from Step 1 |
+| GitHub Actions FTP step fails with 530 | Wrong username or password | Re-check FTP_USERNAME includes the domain (`user@domain.com`), not just `user` |
+| Files upload but page shows 403 | Folder permissions too restrictive | In cPanel File Manager, right-click folder → Permissions → set to 755 |
+| Page shows directory listing instead of calculator | No `index.html` in the folder | Confirm `ui/index.html` exists and was uploaded |
+| Changes not visible after deploy | LiteSpeed Cache serving stale version | In WP admin → LiteSpeed Cache → Purge All, or wait for cache TTL |
+| `deploy.yml` runs but skips all files | FTP action `.ftp-deploy-sync-state.json` is stale | Delete `.ftp-deploy-sync-state.json` from the server path via cPanel File Manager and re-run |
