@@ -158,11 +158,13 @@ app.js populates results table and triggers chart update
 | Layer         | Choice       | Rationale                                              |
 |---------------|-------------|--------------------------------------------------------|
 | Physics       | Python 3.11+ | Existing code, numpy/scipy available                   |
-| Web framework | FastAPI      | Lightweight, async, auto-docs, easy Vercel/Railway deploy |
+| Web framework | FastAPI      | Lightweight, async, auto-docs, easy Render deploy      |
 | Frontend      | Vanilla JS   | Zero build step, easy iframe embed, no framework lock-in |
 | Charts        | Chart.js     | Small bundle, good line chart support, pure JS         |
 | Styling       | Plain CSS    | Matches aerospace-professional aesthetic, no framework needed |
-| Hosting       | Vercel / Railway / Render (free tier) | One-command deploy from git |
+| Backend host  | Render (free tier) | Git-connected, auto-deploy, deploy hooks for GitHub Releases |
+| Site embed    | WordPress iframe | Gutenberg Custom HTML block or Beaver Builder HTML module |
+| CI/CD         | GitHub Actions | Tests on every push; deploy hook fires on GitHub Release |
 
 ---
 
@@ -228,6 +230,17 @@ All physics implementations are validated against published gas dynamics tables:
 ---
 
 ## Deployment Plan
+
+### Hosting Environment — simpsonaerospace.com
+
+Confirmed from WordPress admin page inspection:
+- **WordPress**: 5.8.18
+- **Server**: LiteSpeed (Namecheap cPanel shared hosting)
+- **Page builder**: Beaver Builder
+- **Caching**: LiteSpeed Cache plugin
+
+**Constraint**: Namecheap shared hosting runs PHP only. Python processes cannot
+be started or kept alive. The FastAPI backend must be hosted externally.
 
 ### Backend (shared by all embedding sites)
 

@@ -175,6 +175,7 @@ be hosted externally. The frontend calculator is delivered via `<iframe>` embed.
 | 2025-02-25 | master                           | Initial commits: IsentropicFlow class, unit tests, normal shock functions |
 | 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Code review; created ARCHITECTURE.md, WORKLOG.md, updated README.md and requirements.txt; merged PR #5 to master |
 | 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Deployment analysis: both simpsonaerospace.com and charles-oneill.com/blog/ are WordPress; FastAPI backend must be hosted externally (Render); frontend delivered via iframe; full CORS and integration details added to ARCHITECTURE.md and Phase 4.3 of WORKLOG.md |
+| 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Hosting confirmed from WP admin page: Namecheap cPanel shared hosting (LiteSpeed server, Beaver Builder, WP 5.8.18) — Python cannot run on host, external backend required. Created DEPLOYMENT.md (step-by-step Render + WordPress embed + custom subdomain guide), Procfile, .github/workflows/ci.yml (tests on push/PR), .github/workflows/deploy.yml (fires Render deploy hook on GitHub Release); updated ARCHITECTURE.md with confirmed hosting details |
 
 ---
 
