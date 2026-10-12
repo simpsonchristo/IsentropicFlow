@@ -253,7 +253,26 @@
     });
   });
 
-  // ── Chart ──────────────────────────────────────────────────────────────
+  // ── Chart ─────────────────────────────────────────────────────────────
+  // Adapted from Scientific & Technical Plot Style Guide (Mack JM3 2014):
+  // no gridlines, no fill, no legend, solid 1.5pt line, Okabe-Ito palette,
+  // plot-box border, axis labels as "quantity (unit)".
+
+  var OKABE_BLUE = "#56B4E9";  // sky blue — legible on dark background
+
+  // Draws a border around the chart area (the "plot box")
+  var chartAreaBorderPlugin = {
+    id: "chartAreaBorder",
+    afterDraw: function (ch) {
+      var ctx = ch.ctx;
+      var ca  = ch.chartArea;
+      ctx.save();
+      ctx.strokeStyle = "rgba(139,148,158,0.45)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(ca.left, ca.top, ca.width, ca.height);
+      ctx.restore();
+    },
+  };
 
   function populateChartVars(tab) {
     var sel = el("chart-var");
@@ -317,28 +336,36 @@
 
     var ctx = el("flow-chart").getContext("2d");
 
+    var xLabel = activeTab === "osr" ? "Deflection Angle θ (°)" : "Mach Number (M)";
+
     if (chart) {
       chart.data.labels = cd.labels;
       chart.data.datasets[0].data = cd.data;
       chart.data.datasets[0].label = cd.varLabel;
+      chart.options.scales.x.title.text = xLabel;
+      chart.options.scales.y.title.text = cd.varLabel + " (–)";
       chart.update("none");
       return;
     }
 
+    var TICK  = { color: "#8b949e", font: { family: "Arial, Helvetica, sans-serif", size: 11 } };
+    var TITLE = { display: true, color: "#8b949e", font: { family: "Arial, Helvetica, sans-serif", size: 12, weight: "normal" } };
+
     chart = new Chart(ctx, {
       type: "line",
+      plugins: [chartAreaBorderPlugin],
       data: {
         labels: cd.labels,
         datasets: [{
           label: cd.varLabel,
           data: cd.data,
-          borderColor: "#388bfd",
-          backgroundColor: "rgba(56,139,253,.08)",
-          borderWidth: 2,
+          borderColor: OKABE_BLUE,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,       // Mack: ~1.5 pt
           pointRadius: 0,
           spanGaps: false,
-          fill: true,
-          tension: 0.1,
+          fill: false,            // no area fill (Mack: remove non-data ink)
+          tension: 0,             // no smoothing (Mack: never use smoothed line)
         }],
       },
       options: {
@@ -347,32 +374,37 @@
         animation: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: {
-            labels: { color: "#8b949e", font: { size: 12 } },
-          },
+          legend: { display: false },  // label implied by y-axis title (Mack)
           tooltip: {
             backgroundColor: "#1c2128",
             borderColor: "#30363d",
             borderWidth: 1,
             titleColor: "#e6edf3",
             bodyColor: "#8b949e",
+            titleFont: { family: "Arial, Helvetica, sans-serif" },
+            bodyFont:  { family: "Arial, Helvetica, sans-serif" },
             callbacks: {
-              label: function (ctx) {
-                return " " + ctx.dataset.label + ": " + (ctx.parsed.y != null ? ctx.parsed.y.toPrecision(5) : "—");
+              title: function (items) {
+                return xLabel.replace("(M)", "") + items[0].label;
+              },
+              label: function (item) {
+                return " " + cd.varLabel + ": " + (item.parsed.y != null ? item.parsed.y.toPrecision(5) : "—");
               },
             },
           },
         },
         scales: {
           x: {
-            title: { display: true, text: "Mach Number", color: "#8b949e", font: { size: 11 } },
-            ticks: { color: "#8b949e", font: { size: 10 }, maxTicksLimit: 10 },
-            grid: { color: "#21262d" },
+            title: Object.assign({}, TITLE, { text: xLabel }),
+            ticks: Object.assign({}, TICK, { maxTicksLimit: 10 }),
+            grid: { display: false },   // no gridlines (Mack)
+            border: { color: "rgba(139,148,158,0.45)" },
           },
           y: {
-            title: { display: true, text: cd.varLabel, color: "#8b949e", font: { size: 11 } },
-            ticks: { color: "#8b949e", font: { size: 10 } },
-            grid: { color: "#21262d" },
+            title: Object.assign({}, TITLE, { text: cd.varLabel + " (–)" }),
+            ticks: TICK,
+            grid: { display: false },   // no gridlines (Mack)
+            border: { color: "rgba(139,148,158,0.45)" },
           },
         },
       },
