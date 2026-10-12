@@ -1,94 +1,149 @@
 # Deployment Guide
 
+## Architecture Decision: Why No Backend Server
+
+All compressible flow calculations are closed-form formulas or simple Newton-Raphson
+iterations. These run instantly in JavaScript — no Python server is needed. This matches
+the approach used by the Virginia Tech AOE 3114 calculator and eliminates:
+
+- Backend hosting costs and management
+- CORS configuration
+- Cold start latency
+- Server-side failures
+
+The web calculator is a **static HTML + JavaScript page** deployed to **AWS S3**,
+served via **CloudFront**, and embedded in WordPress via a single `<iframe>`.
+
+---
+
 ## Your Hosting Setup
 
-**simpsonaerospace.com** runs WordPress 5.8.18 on **Namecheap shared hosting**
-(identified by LiteSpeed Cache plugin + SSL Manager plugin — standard Namecheap
-cPanel stack).
-
-**Critical constraint:** Namecheap shared hosting runs PHP only. It cannot start
-or keep alive a Python process. The FastAPI backend must be deployed to a
-separate Python-capable service and reached over HTTPS from the browser.
+| Site | Platform | Host |
+|---|---|---|
+| simpsonaerospace.com | WordPress 5.8.18 | Namecheap cPanel, LiteSpeed server |
+| Calculator | Static HTML/JS | AWS S3 + CloudFront (your existing account) |
 
 ---
 
-## Architecture in Production
+## One-time AWS Setup
+
+### Step 1 — Create an S3 bucket
+
+1. Go to **AWS Console → S3 → Create bucket**
+2. Name it (e.g. `isentropicflow-calculator`) — name must be globally unique
+3. **Uncheck** "Block all public access"
+4. After creation → **Properties tab → Static website hosting → Enable**
+   - Index document: `index.html`
+   - Error document: `index.html`
+5. **Permissions tab → Bucket policy** — paste this (replace `YOUR-BUCKET-NAME`):
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [{
+       "Effect": "Allow",
+       "Principal": "*",
+       "Action": "s3:GetObject",
+       "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
+     }]
+   }
+   ```
+
+### Step 2 — Create a CloudFront distribution
+
+1. Go to **AWS Console → CloudFront → Create distribution**
+2. **Origin domain**: select your S3 bucket's website endpoint
+   (use the website endpoint URL, not the REST endpoint)
+3. **Viewer protocol policy**: Redirect HTTP to HTTPS
+4. **Default root object**: `index.html`
+5. Click **Create distribution** — takes ~5 minutes to deploy
+6. Copy the **Distribution domain name** (e.g. `d1abc123xyz.cloudfront.net`)
+
+### Step 3 — Set up custom domain (tools.simpsonaerospace.com)
+
+In **Namecheap → Domain List → simpsonaerospace.com → Manage → Advanced DNS**:
+
+| Type | Host | Value | TTL |
+|---|---|---|---|
+| CNAME | `tools` | `d1abc123xyz.cloudfront.net` | Automatic |
+
+Then in CloudFront → your distribution → **Edit**:
+- Add `tools.simpsonaerospace.com` under **Alternate domain names (CNAMEs)**
+- Request a free ACM certificate (AWS Certificate Manager) for `tools.simpsonaerospace.com`
+
+### Step 4 — Create an IAM user for GitHub Actions
+
+1. Go to **AWS Console → IAM → Users → Create user**
+2. Name: `github-actions-isentropicflow`
+3. **Permissions → Attach policies directly** — create a custom inline policy:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
+         "Resource": [
+           "arn:aws:s3:::YOUR-BUCKET-NAME",
+           "arn:aws:s3:::YOUR-BUCKET-NAME/*"
+         ]
+       },
+       {
+         "Effect": "Allow",
+         "Action": "cloudfront:CreateInvalidation",
+         "Resource": "arn:aws:cloudfront::YOUR-ACCOUNT-ID:distribution/YOUR-DISTRIBUTION-ID"
+       }
+     ]
+   }
+   ```
+4. After creating the user → **Security credentials → Create access key** (CLI use case)
+5. Save the **Access Key ID** and **Secret Access Key** — shown only once
+
+### Step 5 — Add secrets to GitHub
+
+Go to **GitHub → simpsonchristo/IsentropicFlow → Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret name | Value |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | The access key ID from Step 4 |
+| `AWS_SECRET_ACCESS_KEY` | The secret access key from Step 4 |
+| `AWS_REGION` | Your AWS region (e.g. `us-east-1`) |
+| `S3_BUCKET_NAME` | Your bucket name (e.g. `isentropicflow-calculator`) |
+| `CLOUDFRONT_DISTRIBUTION_ID` | From CloudFront dashboard (e.g. `E1ABC123XYZ`) |
+
+---
+
+## How Deployments Work After Setup
+
+Every push to `master` automatically:
+1. GitHub Actions runs `.github/workflows/deploy.yml`
+2. Syncs the `ui/` folder to your S3 bucket (`--delete` removes old files)
+3. Invalidates the CloudFront cache so visitors see changes within seconds
 
 ```
-Namecheap shared host                External Python host
-(WordPress, PHP, cPanel)             (Render free tier)
-┌────────────────────────┐           ┌──────────────────────────┐
-│ simpsonaerospace.com   │           │ isentropic.onrender.com  │
-│                        │           │                          │
-│  WP page with          │           │  FastAPI app             │
-│  <iframe               │ ◄─ fetch ─►  POST /api/calculate    │
-│   src="https://        │           │  POST /api/table         │
-│   isentropic.onrender  │           │  POST /api/plot          │
-│   .com">               │           │                          │
-└────────────────────────┘           └──────────────────────────┘
-         ▲
-         │ git push / GitHub Release
-         │
-┌────────┴───────────────┐
-│   GitHub repo          │
-│   simpsonchristo/      │
-│   IsentropicFlow       │
-│                        │
-│  CI:  runs tests on    │
-│       every PR + push  │
-│  CD:  fires Render     │
-│       deploy hook on   │
-│       GitHub Release   │
-└────────────────────────┘
+You push code to master
+    → GitHub Actions: aws s3 sync ui/ s3://bucket/ --delete
+    → GitHub Actions: aws cloudfront create-invalidation --paths "/*"
+    → Live at tools.simpsonaerospace.com within ~30 seconds
 ```
 
----
-
-## One-time Setup: Deploy to Render
-
-### Step 1 — Create a Render account
-Go to https://render.com and sign up (free tier is sufficient).
-
-### Step 2 — Create a new Web Service
-1. Click **New → Web Service**
-2. Connect your GitHub account and select `simpsonchristo/IsentropicFlow`
-3. Fill in:
-   - **Name**: `isentropicflow` (becomes `isentropicflow.onrender.com`)
-   - **Branch**: `master`
-   - **Runtime**: `Python 3`
-   - **Build command**: `pip install -r requirements.txt`
-   - **Start command**: `uvicorn api.app:app --host 0.0.0.0 --port $PORT`
-4. Set environment variable:
-   - `ALLOWED_ORIGINS` = `https://simpsonaerospace.com,https://charles-oneill.com`
-5. Click **Create Web Service** — Render builds and deploys automatically.
-
-### Step 3 — Get the Deploy Hook URL
-1. In Render dashboard → your service → **Settings** → scroll to **Deploy Hook**
-2. Copy the URL (looks like `https://api.render.com/deploy/srv-xxx?key=yyy`)
-
-### Step 4 — Add Deploy Hook to GitHub Secrets
-1. In GitHub → repo → **Settings → Secrets and variables → Actions**
-2. Click **New repository secret**
-3. Name: `RENDER_DEPLOY_HOOK_URL`
-4. Value: paste the URL from Step 3
-5. Click **Add secret**
-
-That's it. The CI/CD pipeline is now live.
+No releases needed — every push to master is a deploy. If you want to gate
+deploys to explicit releases instead, change `on: push: branches: [master]`
+to `on: release: types: [published]` in `.github/workflows/deploy.yml`.
 
 ---
 
-## Embedding the Calculator on simpsonaerospace.com
+## Embedding on simpsonaerospace.com
 
-Once the Render app is running:
+Once `tools.simpsonaerospace.com` is live:
 
 1. Log in to `simpsonaerospace.com/wp-admin/`
-2. Go to **Pages → Add New**
-3. Title the page: **Isentropic Flow Calculator**
-4. In the Gutenberg editor, click **+** → search for **Custom HTML** block
+2. **Pages → Add New**
+3. Title: **Isentropic Flow Calculator**
+4. In Gutenberg, click **+** → **Custom HTML**
 5. Paste:
    ```html
    <iframe
-     src="https://isentropicflow.onrender.com"
+     src="https://tools.simpsonaerospace.com"
      width="100%"
      height="820"
      frameborder="0"
@@ -96,68 +151,31 @@ Once the Render app is running:
      loading="lazy">
    </iframe>
    ```
-6. Click **Publish**
+6. **Publish**
 
-The page is now live at `simpsonaerospace.com/isentropic-flow-calculator/`.
-
-> **Beaver Builder note:** If you build the page in Beaver Builder instead of
-> Gutenberg, drag in an **HTML module** and paste the same `<iframe>` snippet.
+If building in **Beaver Builder**: drag an **HTML module** into the row,
+paste the same `<iframe>` snippet, and save.
 
 ---
 
-## Release Workflow — Shipping New Versions
+## Sharing with charles-oneill.com
 
-Every push to `master` runs the test suite (CI). To ship a new version to
-production:
-
-1. Finish your changes and push to `master`
-2. Verify CI passes (GitHub → Actions tab — green checkmark)
-3. In GitHub → repo → **Releases → Create a new release**
-4. Click **Choose a tag** → type a new version like `v1.1.0` → **Create new tag**
-5. Write release notes → **Publish release**
-
-The `deploy.yml` workflow fires automatically, pings the Render deploy hook, and
-Render pulls the latest `master`, rebuilds, and goes live — usually within 2
-minutes.
-
-```
-You push code
-    → CI runs tests (pass/fail shown on GitHub)
-    → You create a GitHub Release (tag v1.x.x)
-    → deploy.yml fires the Render deploy hook
-    → Render rebuilds and redeploys
-    → Live at isentropicflow.onrender.com
-    → Visitors on simpsonaerospace.com see the update via iframe
-```
+The calculator URL (`https://tools.simpsonaerospace.com`) works anywhere.
+For charles-oneill.com, paste the same iframe snippet into a post or page.
+If the site owner doesn't allow raw HTML blocks for non-admins, share the
+direct URL — it works as a standalone page in any browser.
 
 ---
 
-## Optional: Custom Subdomain
+## Cost Estimate (AWS)
 
-To serve the calculator at `tools.simpsonaerospace.com` instead of the Render
-URL (cleaner, fully on-brand, no iframe border needed):
-
-1. In Namecheap dashboard → **Domain List → simpsonaerospace.com → Manage →
-   Advanced DNS**
-2. Add a CNAME record:
-   - Host: `tools`
-   - Value: `isentropicflow.onrender.com`
-   - TTL: Automatic
-3. In Render → your service → **Settings → Custom Domains**
-4. Add `tools.simpsonaerospace.com` — Render provisions a TLS certificate
-   automatically
-5. Update the iframe `src` to `https://tools.simpsonaerospace.com`
-6. Update `ALLOWED_ORIGINS` on Render to include both the old and new origins
-   during transition
-
----
-
-## Environment Variables Reference
-
-| Variable | Example value | Where set |
-|---|---|---|
-| `ALLOWED_ORIGINS` | `https://simpsonaerospace.com,https://charles-oneill.com` | Render dashboard → Environment |
-| `RENDER_DEPLOY_HOOK_URL` | `https://api.render.com/deploy/srv-xxx?key=yyy` | GitHub Secrets |
+| Service | Estimated cost |
+|---|---|
+| S3 storage (< 1 MB of HTML/JS/CSS) | < $0.01 / month |
+| S3 requests | < $0.01 / month at typical traffic |
+| CloudFront (first 1 TB transfer free) | $0 / month under free tier |
+| ACM certificate | Free |
+| **Total** | **~$0 / month** |
 
 ---
 
@@ -165,8 +183,8 @@ URL (cleaner, fully on-brand, no iframe border needed):
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| iframe shows blank / "refused to connect" | CORS or mixed content | Confirm Render app is HTTPS; check `ALLOWED_ORIGINS` |
-| Calculator loads but fetch fails | CORS header missing | Add `simpsonaerospace.com` to `ALLOWED_ORIGINS` on Render |
-| GitHub Release doesn't trigger deploy | Secret not set | Check `RENDER_DEPLOY_HOOK_URL` in GitHub Secrets |
-| Render build fails | Missing dependency | Verify `requirements.txt` lists all imports |
-| Slow first load (30 s) | Render free tier cold start | Normal — free services spin down after 15 min of inactivity; upgrade to Starter tier ($7/mo) to eliminate cold starts |
+| iframe shows blank page | S3 bucket not public or static hosting not enabled | Re-check bucket policy and static website hosting settings |
+| Calculator loads but shows stale content | CloudFront cache not invalidated | Check GitHub Actions ran; manually invalidate from CloudFront console |
+| `tools.simpsonaerospace.com` shows SSL error | ACM cert not issued or CNAME not propagated | Wait up to 48 h for DNS; verify CNAME in Namecheap |
+| GitHub Actions fails at `aws s3 sync` | Wrong secret name or IAM permissions too narrow | Verify all 5 secrets are set; check IAM policy includes `s3:ListBucket` |
+| S3 website endpoint returns 403 | Bucket policy missing or incorrect | Re-paste the bucket policy from Step 1 |

@@ -84,50 +84,50 @@
 
 ---
 
-## Phase 2 — REST API
+## Phase 2 — JavaScript Physics Engine
 
-### 2.1 Setup
-- [ ] Create `api/` directory with `__init__.py`
-- [ ] `pip install fastapi uvicorn[standard]`; add to `requirements.txt`
-- [ ] Create `api/app.py` with FastAPI instance
+> **Architecture change (2026-10-12):** No backend server needed. All calculations
+> run in the browser in JavaScript — same approach as VT AOE 3114 calculator.
+> FastAPI / REST API phase is removed. Python models remain as CLI/reference only.
 
-### 2.2 Endpoints
-- [ ] `GET /api/health` — liveness check
-- [ ] `POST /api/calculate` — single-point calculation for any solver
-- [ ] `POST /api/table` — multi-Mach tabular output
-- [ ] `POST /api/plot` — returns base64-encoded PNG from matplotlib
+### 2.1 ui/physics.js — core math
+- [ ] `tt0(g,m)`, `pp0(g,m)`, `rr0(g,m)` — isentropic ratios
+- [ ] `aa(g,m)` — area-Mach ratio A/A*
+- [ ] `m2(g,m)`, `tts(g,m)`, `pps(g,m)`, `rrs(g,m)` — normal shock
+- [ ] `nu(g,m)` — Prandtl-Meyer angle (use `Math.atan`, `Math.PI` — not hardcoded)
+- [ ] `mdb(g,m1,theta)` — oblique shock wave angle β (cubic polynomial solve)
+- [ ] Fanno flow: `fTT`, `fPP`, `fP0P0`, `fUU`, `fFLD`
+- [ ] Rayleigh flow: `rTT`, `rPP`, `rT0T0`, `rP0P0`, `rUU`
+- [ ] Inverse solvers: Newton-Raphson Mach lookup from any ratio, `|Δm| < 1e-6`
 
-### 2.3 API hardening
-- [ ] Input validation via Pydantic models
-- [ ] CORS middleware (allow `simpsonaerospace.com` + localhost)
-- [ ] Error responses with meaningful messages (422 Unprocessable Entity)
+### 2.2 Cross-validation
+- [ ] Write `tests/test_physics_js.py` — runs Node.js on `physics.js`, compares
+  output to Python models at identical inputs; tolerance ±0.01%
 
 ---
 
 ## Phase 3 — Web UI
 
 ### 3.1 Layout & structure (ui/)
-- [ ] `ui/index.html` — semantic HTML, tabs for each solver
-- [ ] `ui/styles.css` — dark aerospace theme, responsive grid
-- [ ] `ui/app.js` — fetch API calls, DOM updates
+- [ ] `ui/index.html` — semantic HTML, tab-based solver selector, no external deps
+- [ ] `ui/styles.css` — dark aerospace theme, responsive grid, phone-width safe
+- [ ] `ui/app.js` — tab switching, reads inputs, calls physics.js, renders table + chart
 
 ### 3.2 Solver panels
-- [ ] Isentropic Flow (IFR) panel — inputs: M (or ratio), γ; outputs: T/T₀, P/P₀, ρ/ρ₀, A/A*
-- [ ] Normal Shock (NSR) panel — inputs: M₁, γ; outputs: M₂, T₂/T₁, P₂/P₁, etc.
-- [ ] Oblique Shock (OSR) panel — inputs: M₁, θ or β, γ; weak/strong toggle
-- [ ] Fanno Flow panel — inputs: M, γ; outputs: all Fanno ratios + 4fL*/D
-- [ ] Rayleigh Flow panel — inputs: M, γ; outputs: all Rayleigh ratios
-- [ ] Combustor panel — inputs: inlet conditions + f, η; outputs: exit conditions
+- [ ] Isentropic Flow (IFR) — inputs: M (or any ratio), γ; outputs: T/T₀, P/P₀, ρ/ρ₀, A/A*
+- [ ] Normal Shock (NSR) — inputs: M₁, γ; outputs: M₂ + all ratios
+- [ ] Oblique Shock (OSR) — inputs: M₁, θ or β, γ; weak/strong toggle
+- [ ] Fanno Flow — inputs: M, γ; outputs: all Fanno ratios + 4fL*/D
+- [ ] Rayleigh Flow — inputs: M, γ; outputs: all Rayleigh ratios
 
 ### 3.3 Visualization
-- [ ] Line chart (Chart.js) — plot any variable vs. Mach range
-- [ ] Variable selector dropdown (which quantity to plot)
-- [ ] Chart.js local bundle (no CDN dependency)
+- [ ] Chart.js line chart — any variable vs. Mach range
+- [ ] Variable selector dropdown
+- [ ] Chart.js bundled locally (no CDN)
 
 ### 3.4 UX polish
-- [ ] Input validation feedback (invalid M < 0, γ ≤ 1)
-- [ ] Copy-to-clipboard for results
-- [ ] Loading spinner during API call
+- [ ] Input validation (M ≤ 0 or γ ≤ 1 shows inline error, no alert())
+- [ ] Copy-to-clipboard for results table
 - [ ] Mobile-responsive layout
 
 ---
@@ -135,36 +135,31 @@
 ## Phase 4 — Testing & Deployment
 
 ### 4.1 Testing
-- [ ] Move inline unit tests from `models/IsentropicFlow.py` to `tests/test_isentropic.py`
-- [ ] Add `pytest` + `pytest-cov` to requirements
-- [ ] Achieve >90% coverage on all physics modules
-- [ ] Integration tests for API endpoints (pytest + httpx)
+- [ ] Move inline Python unit tests to `tests/test_isentropic.py`
+- [ ] `pytest` + `pytest-cov` in requirements; target >90% Python coverage
+- [ ] `tests/test_physics_js.py` cross-checks JS against Python
 
-### 4.2 Packaging
-- [ ] Finalize `requirements.txt`
-- [ ] Add `Procfile`: `web: uvicorn api.app:app --host 0.0.0.0 --port $PORT`
-- [ ] Add `.env.example` with `ALLOWED_ORIGINS=https://simpsonaerospace.com`
+### 4.2 AWS Setup (one-time, see DEPLOYMENT.md for full steps)
+- [ ] Create S3 bucket with static website hosting enabled
+- [ ] Create CloudFront distribution pointing at S3 website endpoint
+- [ ] Add Namecheap CNAME: `tools` → CloudFront domain
+- [ ] Create IAM user `github-actions-isentropicflow` with minimal S3+CloudFront policy
+- [ ] Add 5 GitHub Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`,
+  `S3_BUCKET_NAME`, `CLOUDFRONT_DISTRIBUTION_ID`
 
 ### 4.3 Deployment
 
-Both target embedding sites run **WordPress** (PHP-only); the FastAPI backend must
-be hosted externally. The frontend calculator is delivered via `<iframe>` embed.
+Every push to `master` → GitHub Actions syncs `ui/` to S3 and invalidates CloudFront.
 
-**Backend deploy (Render)**
-- [ ] Create Render free web service; connect GitHub repo → auto-deploy on `master`
-- [ ] Add `Procfile`: `web: uvicorn api.app:app --host 0.0.0.0 --port $PORT`
-- [ ] Set `ALLOWED_ORIGINS=https://simpsonaerospace.com,https://charles-oneill.com`
+**simpsonaerospace.com**
+- [ ] Create WordPress page `/tools/isentropic-flow-calculator/`
+- [ ] Add Gutenberg Custom HTML block with `<iframe src="https://tools.simpsonaerospace.com" ...>`
+  (or Beaver Builder HTML module with the same snippet)
 
-**simpsonaerospace.com** (full admin access)
-- [ ] Create WordPress page `/tools/isentropic-flow/`
-- [ ] Add Gutenberg Custom HTML block with `<iframe src="https://isentropicflow.onrender.com" ...>`
-- [ ] Optional: CNAME `tools.simpsonaerospace.com` → Render app for on-brand subdomain
-
-**charles-oneill.com/blog/** (access level TBD)
-- [ ] Confirm whether admin or editor access is available
-- [ ] If admin: same iframe embed process as simpsonaerospace.com
-- [ ] If editor only: coordinate with site owner to paste the iframe block
-- [ ] Minimum path: provide hosted URL to site owner for embedding
+**charles-oneill.com/blog/**
+- [ ] Confirm access level with site owner
+- [ ] If admin: same iframe embed
+- [ ] Otherwise: share `https://tools.simpsonaerospace.com` for owner to embed
 
 ---
 
@@ -175,7 +170,7 @@ be hosted externally. The frontend calculator is delivered via `<iframe>` embed.
 | 2025-02-25 | master                           | Initial commits: IsentropicFlow class, unit tests, normal shock functions |
 | 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Code review; created ARCHITECTURE.md, WORKLOG.md, updated README.md and requirements.txt; merged PR #5 to master |
 | 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Deployment analysis: both simpsonaerospace.com and charles-oneill.com/blog/ are WordPress; FastAPI backend must be hosted externally (Render); frontend delivered via iframe; full CORS and integration details added to ARCHITECTURE.md and Phase 4.3 of WORKLOG.md |
-| 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Hosting confirmed from WP admin page: Namecheap cPanel shared hosting (LiteSpeed server, Beaver Builder, WP 5.8.18) — Python cannot run on host, external backend required. Created DEPLOYMENT.md (step-by-step Render + WordPress embed + custom subdomain guide), Procfile, .github/workflows/ci.yml (tests on push/PR), .github/workflows/deploy.yml (fires Render deploy hook on GitHub Release); updated ARCHITECTURE.md with confirmed hosting details |
+| 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Hosting confirmed from WP admin page: Namecheap cPanel shared hosting (LiteSpeed server, Beaver Builder, WP 5.8.18). Researched VT AOE 3114 calculator — confirmed pure client-side JS, no backend. Architecture revised: no FastAPI/backend needed; all math in JavaScript; static files to AWS S3 + CloudFront. Rewrote ARCHITECTURE.md, DEPLOYMENT.md, deploy.yml (aws s3 sync on push to master), WORKLOG phases 2-4; removed Render/FastAPI references |
 
 ---
 
