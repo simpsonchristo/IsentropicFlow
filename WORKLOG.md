@@ -170,6 +170,7 @@ Every push to `master` → GitHub Actions FTP-syncs `ui/` to Namecheap (`/public
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Simplified deployment: S3/CloudFront replaced with direct FTP to Namecheap (existing host). Updated deploy.yml (SamKirkland/FTP-Deploy-Action), DEPLOYMENT.md (3-secret setup, cPanel FTP steps, LiteSpeed cache note), ARCHITECTURE.md (hosting diagram, tech stack, embed section) |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built ui/physics.js: all compressible flow math in JS (isentropic, normal shock, oblique shock, Prandtl-Meyer, Fanno, Rayleigh, inverse solvers); all self-tests pass against James John tables |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built web UI (index.html, styles.css, app.js, local chart.umd.js); Playwright-verified; chart follows Mack plot recipe (white plot, black box, 4-sided major/minor ticks, governing equation on chart) |
+| 2026-10-12 | claude/review-docs-plan-ui-U8kGB | First deploy to Namecheap: FTP_SERVER must be `simpsonaerospace.com` (`ftp.` has no DNS); cPanel FTP accounts are jailed to their directory (verified by probe), so deploy uses a home-root FTP account with `server-dir: /public_html/tools/isentropic/` |
 
 ---
 
