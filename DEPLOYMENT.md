@@ -36,11 +36,15 @@ existing Namecheap hosting.
 
 1. Log in to **Namecheap → cPanel** (usually at `simpsonaerospace.com/cpanel`)
 2. Go to **FTP Accounts**
-3. Either use the default cPanel FTP account, or create a dedicated one:
-   - **Log In**: e.g. `deploy@simpsonaerospace.com`
-   - **Directory**: `/public_html/tools/isentropic`  (restricts it to this folder only)
+3. First create the target folder in **File Manager**: inside `public_html/`, create `tools`, then inside it `isentropic`.
+4. In FTP Accounts, create a dedicated account:
+   - **Log In**: e.g. `github@simpsonaerospace.com`
+   - **Directory**: `public_html/tools/isentropic` (the field is relative to the cPanel home
+     directory; cPanel pre-fills `simpsonaerospace.com/<login>`, so **overwrite it**). The account's
+     home must be exactly this folder, because `deploy.yml` uses `server-dir: ./`.
    - **Quota**: Unlimited
-4. Note down: FTP hostname (usually `ftp.simpsonaerospace.com`), username, password
+5. Note down: FTP hostname, username, password. Use `simpsonaerospace.com` (or the server IP) as
+   the hostname if `ftp.simpsonaerospace.com` has no DNS record: it did not resolve for this domain.
 
 ### Step 2 — Add FTP credentials to GitHub Secrets
 
@@ -48,7 +52,7 @@ Go to **GitHub → simpsonchristo/IsentropicFlow → Settings → Secrets and va
 
 | Secret name | Value |
 |---|---|
-| `FTP_SERVER` | `ftp.simpsonaerospace.com` |
+| `FTP_SERVER` | `simpsonaerospace.com` (bare hostname, no `ftp://`) |
 | `FTP_USERNAME` | Your FTP username (e.g. `deploy@simpsonaerospace.com`) |
 | `FTP_PASSWORD` | Your FTP password |
 
@@ -134,7 +138,7 @@ in `.github/workflows/deploy.yml`.
 
 | Secret | Example value | Where to find it |
 |---|---|---|
-| `FTP_SERVER` | `ftp.simpsonaerospace.com` | Namecheap cPanel → FTP Accounts |
+| `FTP_SERVER` | `simpsonaerospace.com` (bare hostname, no `ftp://`) | Namecheap cPanel → FTP Accounts |
 | `FTP_USERNAME` | `deploy@simpsonaerospace.com` | Namecheap cPanel → FTP Accounts |
 | `FTP_PASSWORD` | (your FTP password) | Set when creating the FTP account |
 
@@ -148,4 +152,6 @@ in `.github/workflows/deploy.yml`.
 | Files upload but page shows 403 | Folder permissions too restrictive | In cPanel File Manager, right-click folder → Permissions → set to 755 |
 | Page shows directory listing instead of calculator | No `index.html` in the folder | Confirm `ui/index.html` exists and was uploaded |
 | Changes not visible after deploy | LiteSpeed Cache serving stale version | In WP admin → LiteSpeed Cache → Purge All, or wait for cache TTL |
+| Deploy succeeds but site shows a WordPress 404 | FTP account home is not `public_html/tools/isentropic`, files landed elsewhere | Check where File Manager shows `index.html`; fix the account's Directory in FTP Accounts, then delete the stray copy |
+| `getaddrinfo ENOTFOUND` | `FTP_SERVER` hostname does not resolve | Use `simpsonaerospace.com` or the server IP |
 | `deploy.yml` runs but skips all files | FTP action `.ftp-deploy-sync-state.json` is stale | Delete `.ftp-deploy-sync-state.json` from the server path via cPanel File Manager and re-run |
