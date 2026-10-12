@@ -139,13 +139,9 @@
 - [ ] `pytest` + `pytest-cov` in requirements; target >90% Python coverage
 - [ ] `tests/test_physics_js.py` cross-checks JS against Python
 
-### 4.2 AWS Setup (one-time, see DEPLOYMENT.md for full steps)
-- [ ] Create S3 bucket with static website hosting enabled
-- [ ] Create CloudFront distribution pointing at S3 website endpoint
-- [ ] Add Namecheap CNAME: `tools` → CloudFront domain
-- [ ] Create IAM user `github-actions-isentropicflow` with minimal S3+CloudFront policy
-- [ ] Add 5 GitHub Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`,
-  `S3_BUCKET_NAME`, `CLOUDFRONT_DISTRIBUTION_ID`
+### 4.2 Namecheap FTP Setup (one-time, see DEPLOYMENT.md for full steps)
+- [ ] Get FTP credentials from Namecheap cPanel → FTP Accounts
+- [ ] Add 3 GitHub Secrets: `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`
 
 ### 4.3 Deployment
 
@@ -171,6 +167,7 @@ Every push to `master` → GitHub Actions syncs `ui/` to S3 and invalidates Clou
 | 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Code review; created ARCHITECTURE.md, WORKLOG.md, updated README.md and requirements.txt; merged PR #5 to master |
 | 2026-05-13 | claude/review-docs-plan-ui-U8kGB | Deployment analysis: both simpsonaerospace.com and charles-oneill.com/blog/ are WordPress; FastAPI backend must be hosted externally (Render); frontend delivered via iframe; full CORS and integration details added to ARCHITECTURE.md and Phase 4.3 of WORKLOG.md |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Hosting confirmed from WP admin page: Namecheap cPanel shared hosting (LiteSpeed server, Beaver Builder, WP 5.8.18). Researched VT AOE 3114 calculator — confirmed pure client-side JS, no backend. Architecture revised: no FastAPI/backend needed; all math in JavaScript; static files to AWS S3 + CloudFront. Rewrote ARCHITECTURE.md, DEPLOYMENT.md, deploy.yml (aws s3 sync on push to master), WORKLOG phases 2-4; removed Render/FastAPI references |
+| 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Simplified deployment: S3/CloudFront replaced with direct FTP to Namecheap (existing host). Updated deploy.yml (SamKirkland/FTP-Deploy-Action), DEPLOYMENT.md (3-secret setup, cPanel FTP steps, LiteSpeed cache note), ARCHITECTURE.md (hosting diagram, tech stack, embed section) |
 
 ---
 
