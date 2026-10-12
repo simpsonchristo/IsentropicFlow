@@ -4,184 +4,158 @@
 
 IsentropicFlow is a compressible aerodynamics calculator covering isentropic flow,
 normal and oblique shock relations, Fanno flow, Rayleigh flow, and combustor analysis.
-The end state is a Python computation engine exposed through a REST API with a
-browser-based calculator UI embeddable on simpsonaerospace.com.
+
+The project has two independent layers:
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Python models** | numpy, scipy | CLI tool, offline reference, validated textbook values |
+| **Web calculator** | Vanilla HTML + JavaScript | Browser-hosted UI, zero dependencies, embeddable anywhere |
+
+The web UI runs entirely in the browser — no backend server, no API calls, no
+external services. All physics calculations are implemented directly in JavaScript,
+the same approach used by established calculators such as the Virginia Tech AOE 3114
+tool (`devenport.aoe.vt.edu`). This eliminates CORS, cold starts, server costs, and
+deployment complexity.
 
 ---
 
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Browser (Web UI)                         │
-│   simpsonaerospace.com or standalone hosted page                │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │  Input Panel │  │  Results     │  │  Plot / Chart Panel  │  │
-│  │  (Mach, γ,   │  │  Table       │  │  (matplotlib/        │  │
-│  │   solver     │  │              │  │   Chart.js)          │  │
-│  │   select)    │  │              │  │                      │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────────────────────┘  │
-│         │                 │                                      │
-│         └────────── fetch/XHR ───────────────────────────────┐  │
-└─────────────────────────────────────────────────────────────────┘
-                                                               │
-                                    ┌──────────────────────────▼──┐
-                                    │        REST API             │
-                                    │   Flask or FastAPI          │
-                                    │                             │
-                                    │  POST /api/calculate        │
-                                    │  GET  /api/plot             │
-                                    │  GET  /api/table            │
-                                    └──────────────┬──────────────┘
-                                                   │
-                                    ┌──────────────▼──────────────┐
-                                    │      Computation Layer      │
-                                    │                             │
-                                    │  models/IsentropicFlow.py   │
-                                    │  models/combustor.py        │
-                                    │  models/oblique_shock.py    │
-                                    │  models/fanno.py            │
-                                    │  models/rayleigh.py         │
-                                    └─────────────────────────────┘
+Visitor's browser
+┌────────────────────────────────────────────────────────────┐
+│                  ui/index.html                             │
+│                                                            │
+│  ┌─────────────┐  ┌───────────────┐  ┌─────────────────┐  │
+│  │ Input Panel │  │ Results Table │  │  Chart (JS)     │  │
+│  │ M, γ, type  │  │ formatted     │  │  variable vs M  │  │
+│  └──────┬──────┘  └───────────────┘  └─────────────────┘  │
+│         │                                                  │
+│         ▼  (no network call)                               │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │             ui/physics.js                            │  │
+│  │  tt0(g,m)  pp0(g,m)  rr0(g,m)  aa(g,m)             │  │
+│  │  m2(g,m)   tts(g,m)  pps(g,m)  nu(g,m)             │  │
+│  │  oblique shock (θ-β-M cubic solve)                   │  │
+│  │  Fanno / Rayleigh (closed-form + Newton-Raphson)     │  │
+│  └──────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────┘
+         ▲
+         │  served as static files (no PHP, no Python)
+         │
+┌────────┴────────────────────────────────────────┐
+│  AWS S3 bucket (static website hosting)         │
+│  + CloudFront CDN                               │
+│  → tools.simpsonaerospace.com  (CNAME)          │
+└────────────────────────────────────────────────┘
+         ▲
+         │  git push to master → GitHub Actions → aws s3 sync
+         │
+┌────────┴───────────────┐
+│  GitHub repo           │
+│  simpsonchristo/       │
+│  IsentropicFlow        │
+└────────────────────────┘
 ```
 
 ---
 
 ## Module Breakdown
 
-### `models/IsentropicFlow.py` — Core Engine (exists, partial)
-Handles all isentropic and normal-shock relations for a given γ.
+### `ui/physics.js` — Browser Calculation Engine (new)
 
-| Method       | Status      | Description                                      |
-|-------------|-------------|--------------------------------------------------|
-| `__init__`  | Complete    | Validates γ, stores solver type                  |
-| `tt0(m)`    | Complete    | Temperature ratio T/T₀                           |
-| `pp0(m)`    | Complete    | Pressure ratio P/P₀                              |
-| `rr0(m)`    | Complete    | Density ratio ρ/ρ₀                               |
-| `tts(m)`    | Complete    | Normal shock temperature ratio T₂/T₁             |
-| `pps(m)`    | Complete    | Normal shock pressure ratio P₂/P₁                |
-| `rrs(m)`    | Complete    | Normal shock density ratio ρ₂/ρ₁                 |
-| `aas(m)`    | Complete    | Normal shock area ratio A/A*                     |
-| `nu(m)`     | Complete    | Prandtl-Meyer function ν(M) (degrees)            |
-| `m2(m1)`    | Complete    | Mach after normal shock M₂                       |
-| `aa(m)`     | **Missing** | Area-Mach ratio A/A* (isentropic)               |
-| `ifr(val, item)` | **TODO** | Inverse lookup: given ratio → find Mach         |
-| `__call__`  | **TODO**    | Unified dispatcher across all solver types       |
+Mirrors the Python models in JavaScript. All functions are pure: `(gamma, mach) → number`.
+Where closed-form inversion is not possible (e.g. A/A* → M), Newton-Raphson iteration
+converges to `|Δm| < 1e-6`.
 
-**Missing solver modules to add:**
+| Function | Description |
+|---|---|
+| `tt0(g, m)` | T/T₀ |
+| `pp0(g, m)` | P/P₀ |
+| `rr0(g, m)` | ρ/ρ₀ |
+| `aa(g, m)` | A/A* (isentropic) |
+| `m2(g, m1)` | M₂ after normal shock |
+| `tts(g, m)`, `pps(g, m)`, `rrs(g, m)` | Normal shock ratios |
+| `nu(g, m)` | Prandtl-Meyer angle (degrees) |
+| `mdb(g, m1, theta)` | Oblique shock wave angle β from turn angle θ (cubic solve) |
+| Fanno: `fTT(g,m)`, `fPP(g,m)`, `fP0P0(g,m)`, `fUU(g,m)`, `fFLD(g,m)` | Fanno flow ratios |
+| Rayleigh: `rTT(g,m)`, `rPP(g,m)`, `rT0T0(g,m)`, `rP0P0(g,m)`, `rUU(g,m)` | Rayleigh flow ratios |
+| Inverse solvers: `machFromTT0(g, ratio)`, `machFromPP0(g, ratio)`, etc. | Newton-Raphson Mach lookup |
 
-### `models/oblique_shock.py` — Oblique Shock Relations (new)
-- `wave_angle(m1, theta)` — solve β from M₁ and deflection angle θ
-- `deflection_angle(m1, beta)` — θ from M₁ and β
-- `m2_oblique(m1, beta)` — downstream Mach
-- `p2p1(m1, beta)`, `t2t1(m1, beta)`, `rho2rho1(m1, beta)`
-- Strong vs. weak shock selection
+### `ui/index.html` — Calculator UI (new)
+Single self-contained page. Tab-based solver selector, input forms, results table,
+Chart.js line chart. No build step, no npm, no framework.
 
-### `models/fanno.py` — Fanno Flow (new)
-Adiabatic flow with friction in a constant-area duct.
-- `tt_star(m)` — T/T*
-- `pp_star(m)` — P/P*
-- `p0p0_star(m)` — P₀/P₀*
-- `uu_star(m)` — U/U* (= ρ*/ρ)
-- `fld_star(m)` — 4fL*/D
-- `entropy(m)` — (s*-s)/R
+### `ui/styles.css` — Styling (new)
+Responsive grid layout, aerospace dark theme. Works at phone width.
 
-### `models/rayleigh.py` — Rayleigh Flow (new)
-Frictionless flow with heat addition in a constant-area duct.
-- `tt0_star(m)` — T₀/T₀*
-- `tt_star(m)` — T/T*
-- `pp_star(m)` — P/P*
-- `p0p0_star(m)` — P₀/P₀*
-- `uu_star(m)` — U/U*
-- `entropy(m)` — (s*-s)/R
+### `models/IsentropicFlow.py` — Python CLI (exists, partial)
+Retained as a standalone tool for offline use, batch calculations, and as the
+validated reference against which the JS implementation is cross-checked.
+Not used by the web UI.
 
-### `models/combustor.py` — Combustor/Vehicle (exists, stub)
-Integrates the physics modules into a simple gas turbine / scramjet combustor model.
-```
-inlet conditions → isentropic compression → combustor (Rayleigh) → nozzle expansion
-```
-Planned inputs: inlet Mach, inlet T, inlet P, fuel-air ratio f, combustion efficiency η_c.
-
-### `api/app.py` — REST API (new)
-Framework: **FastAPI** (preferred — automatic OpenAPI docs, async, lightweight)
-
-| Endpoint           | Method | Payload                              | Response              |
-|--------------------|--------|--------------------------------------|-----------------------|
-| `/api/calculate`   | POST   | `{solver, mach, gamma, ...params}`   | JSON result object    |
-| `/api/table`       | POST   | `{solver, mach_range, gamma}`        | JSON array of rows    |
-| `/api/plot`        | POST   | `{solver, mach_range, gamma}`        | Base64 PNG or SVG     |
-| `/api/health`      | GET    | —                                    | `{"status":"ok"}`     |
-
-### `ui/` — Web Interface (new)
-Self-contained static HTML/CSS/JS — no build step required, easily embeddable.
-
-```
-ui/
-├── index.html          # Single-page app entry point
-├── styles.css          # Responsive layout, aerospace dark theme
-├── app.js              # Fetch calls, DOM updates, chart rendering
-└── chart.min.js        # Chart.js (local copy, no CDN dependency)
-```
-
-**UI Panels:**
-1. **Solver Selector** — tabs: IFR | NSR | OSR | Fanno | Rayleigh | Combustor
-2. **Parameter Inputs** — Mach number / range, γ, solver-specific fields
-3. **Results Table** — formatted output, copyable values
-4. **Plot Panel** — renders curve for selected variable vs. Mach range
-5. **About / Reference** — equation reference, textbook citations
+### `models/combustor.py`, `oblique_shock.py`, `fanno.py`, `rayleigh.py` — Python extensions (planned)
+Python-only. Useful for CLI and for cross-checking JS output during development.
 
 ---
 
-## Data Flow — Single Point Calculation
+## Data Flow — Single Point Calculation (browser-only)
 
 ```
 User enters M=2, γ=1.4, solver=IFR
     │
-    ▼
-app.js: fetch POST /api/calculate {solver:"ifr", mach:2, gamma:1.4}
+    ▼ (no network request)
+physics.js: tt0(1.4, 2) → 0.5556
+            pp0(1.4, 2) → 0.1278
+            rr0(1.4, 2) → 0.2301
+            aa(1.4, 2)  → 1.6875
     │
     ▼
-FastAPI route → IsentropicFlow(gamma=1.4)
-    │           → tt0(2), pp0(2), rr0(2), aa(2)
-    ▼
-JSON response: {T_T0: 0.5556, P_P0: 0.1278, rho_rho0: 0.2301, A_Astar: 1.6875}
-    │
-    ▼
-app.js populates results table and triggers chart update
+app.js updates results table and chart — instant, no latency
 ```
 
 ---
 
 ## Technology Stack
 
-| Layer         | Choice       | Rationale                                              |
-|---------------|-------------|--------------------------------------------------------|
-| Physics       | Python 3.11+ | Existing code, numpy/scipy available                   |
-| Web framework | FastAPI      | Lightweight, async, auto-docs, easy Vercel/Railway deploy |
-| Frontend      | Vanilla JS   | Zero build step, easy iframe embed, no framework lock-in |
-| Charts        | Chart.js     | Small bundle, good line chart support, pure JS         |
-| Styling       | Plain CSS    | Matches aerospace-professional aesthetic, no framework needed |
-| Hosting       | Vercel / Railway / Render (free tier) | One-command deploy from git |
+| Layer | Choice | Rationale |
+|---|---|---|
+| Web calculations | Vanilla JavaScript | Runs in browser, zero dependencies, no server needed |
+| Web UI | Plain HTML + CSS | No build step, embeds anywhere, works in any iframe |
+| Charts | Chart.js (bundled) | Small, pure JS line charts |
+| Static hosting | AWS S3 + CloudFront | Already on your AWS account, ~$0.01/month, global CDN |
+| Custom domain | Namecheap CNAME → CloudFront | `tools.simpsonaerospace.com` |
+| CI/CD | GitHub Actions | `aws s3 sync` on push to master; JS unit tests on PRs |
+| Python reference | numpy, scipy, matplotlib | CLI tool and JS cross-check |
 
 ---
 
-## Embedding on simpsonaerospace.com
+## Hosting Environment
 
-The UI is designed to be embedded as an `<iframe>` on any page:
+### simpsonaerospace.com
+Confirmed from WordPress admin inspection:
+- **WordPress**: 5.8.18 on Namecheap cPanel shared hosting (LiteSpeed server)
+- **Page builder**: Beaver Builder
+- **Implication**: PHP-only host. No Python possible. Pure static files on S3 is the right fit.
+
+### Embedding on WordPress
+The static UI is served from S3/CloudFront. WordPress embeds it via a single iframe
+in a Gutenberg Custom HTML block or Beaver Builder HTML module:
 
 ```html
 <iframe
-  src="https://isentropicflow.yourdomain.com"
+  src="https://tools.simpsonaerospace.com"
   width="100%"
-  height="800"
+  height="820"
   frameborder="0"
-  title="Isentropic Flow Calculator">
+  title="Isentropic Flow Calculator"
+  loading="lazy">
 </iframe>
 ```
 
-Alternatively, the `ui/` directory can be served directly from the same domain as
-a static sub-path (e.g. `simpsonaerospace.com/tools/isentropic`).
+No CORS configuration required — the iframe loads an independent origin and
+all computation stays inside it.
 
 ---
 
@@ -189,44 +163,58 @@ a static sub-path (e.g. `simpsonaerospace.com/tools/isentropic`).
 
 ```
 IsentropicFlow/
-├── models/
-│   ├── IsentropicFlow.py       # Core isentropic + normal shock (extend)
-│   ├── oblique_shock.py        # Oblique shock relations (new)
+├── ui/                         # Static web calculator (deployed to S3)
+│   ├── index.html              # Single-page calculator UI
+│   ├── styles.css              # Responsive aerospace theme
+│   ├── app.js                  # UI logic, tab switching, chart rendering
+│   └── physics.js              # All compressible flow math in JavaScript
+├── models/                     # Python CLI / reference (not deployed to web)
+│   ├── IsentropicFlow.py       # Core isentropic + normal shock
+│   ├── oblique_shock.py        # Oblique shock (new)
 │   ├── fanno.py                # Fanno flow (new)
 │   ├── rayleigh.py             # Rayleigh flow (new)
-│   └── combustor.py            # Combustor/vehicle model (stub → complete)
-├── api/
-│   ├── __init__.py
-│   └── app.py                  # FastAPI application
-├── ui/
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
+│   └── combustor.py            # Combustor model (stub → complete)
 ├── tests/
-│   ├── test_isentropic.py
-│   ├── test_oblique.py
-│   ├── test_fanno.py
-│   └── test_rayleigh.py
-├── main.py                     # CLI entry point
-├── requirements.txt
-└── README.md
+│   ├── test_isentropic.py      # Python unit tests
+│   └── test_physics_js.py      # Cross-checks JS output against Python
+├── .github/
+│   └── workflows/
+│       ├── ci.yml              # Run Python tests on PRs
+│       └── deploy.yml          # aws s3 sync on push to master
+├── main.py                     # Python CLI entry point
+└── requirements.txt            # Python deps (numpy, scipy, matplotlib, pytest)
 ```
 
 ---
 
 ## Validation & Testing Strategy
 
-All physics implementations are validated against published gas dynamics tables:
-- **James John, "Gas Dynamics"** — primary reference (already used in existing tests)
-- **Anderson, "Modern Compressible Flow"** — secondary cross-check
-- Unit tests live in `tests/` and use `pytest`
-- Tolerance: ±0.1% of textbook values
+- **Python tests**: `pytest tests/` — validates formulas against James John "Gas Dynamics" tables
+- **JS cross-check**: `test_physics_js.py` runs Node.js against `physics.js` and compares
+  output to Python at matching inputs; ensures the JS and Python never diverge
+- Tolerance: ±0.01% of textbook values
 
 ---
 
 ## Deployment Plan
 
-1. **Local dev**: `uvicorn api.app:app --reload`
-2. **Production**: Docker container or `Procfile`-based deploy to Render/Railway/Vercel
-3. **CORS**: Allow `simpsonaerospace.com` origin in FastAPI CORS middleware
-4. **Environment**: `ALLOWED_ORIGINS` env var controls CORS whitelist
+See `DEPLOYMENT.md` for step-by-step instructions.
+
+| Step | Action |
+|---|---|
+| 1 | Create S3 bucket with static website hosting enabled |
+| 2 | Create CloudFront distribution pointed at the bucket |
+| 3 | Add Namecheap CNAME: `tools` → CloudFront domain |
+| 4 | Add AWS credentials to GitHub Secrets |
+| 5 | Push to master → GitHub Actions syncs `ui/` to S3 and invalidates CloudFront |
+| 6 | Add iframe to WordPress page |
+
+### Site Comparison
+
+| Factor | simpsonaerospace.com | charles-oneill.com/blog/ |
+|---|---|---|
+| Platform | WordPress on Namecheap | WordPress |
+| Your access | Full admin | Depends on arrangement |
+| Calculator hosted at | `tools.simpsonaerospace.com` (S3/CloudFront) | Same URL, shared |
+| Embed method | Gutenberg Custom HTML / Beaver Builder HTML module | Same iframe if admin access; share URL otherwise |
+| CORS needed | No — pure static iframe | No |
