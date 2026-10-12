@@ -109,26 +109,26 @@
 ## Phase 3 — Web UI
 
 ### 3.1 Layout & structure (ui/)
-- [ ] `ui/index.html` — semantic HTML, tab-based solver selector, no external deps
-- [ ] `ui/styles.css` — dark aerospace theme, responsive grid, phone-width safe
-- [ ] `ui/app.js` — tab switching, reads inputs, calls physics.js, renders table + chart
+- [x] `ui/index.html` — semantic HTML, tab-based solver selector, no external deps
+- [x] `ui/styles.css` — dark aerospace theme, responsive grid, phone-width safe
+- [x] `ui/app.js` — tab switching, reads inputs, calls physics.js, renders table + chart
 
 ### 3.2 Solver panels
-- [ ] Isentropic Flow (IFR) — inputs: M (or any ratio), γ; outputs: T/T₀, P/P₀, ρ/ρ₀, A/A*
-- [ ] Normal Shock (NSR) — inputs: M₁, γ; outputs: M₂ + all ratios
-- [ ] Oblique Shock (OSR) — inputs: M₁, θ or β, γ; weak/strong toggle
-- [ ] Fanno Flow — inputs: M, γ; outputs: all Fanno ratios + 4fL*/D
-- [ ] Rayleigh Flow — inputs: M, γ; outputs: all Rayleigh ratios
+- [x] Isentropic Flow (IFR) — inputs: M (or any ratio), γ; outputs: T/T₀, P/P₀, ρ/ρ₀, A/A*
+- [x] Normal Shock (NSR) — inputs: M₁, γ; outputs: M₂ + all ratios
+- [x] Oblique Shock (OSR) — inputs: M₁, θ or β, γ; weak/strong toggle
+- [x] Fanno Flow — inputs: M, γ; outputs: all Fanno ratios + 4fL*/D
+- [x] Rayleigh Flow — inputs: M, γ; outputs: all Rayleigh ratios
 
 ### 3.3 Visualization
-- [ ] Chart.js line chart — any variable vs. Mach range
-- [ ] Variable selector dropdown
-- [ ] Chart.js bundled locally (no CDN)
+- [x] Chart.js line chart — any variable vs. Mach range
+- [x] Variable selector dropdown
+- [x] Chart.js bundled locally (no CDN)
 
 ### 3.4 UX polish
-- [ ] Input validation (M ≤ 0 or γ ≤ 1 shows inline error, no alert())
+- [x] Input validation (M ≤ 0 or γ ≤ 1 shows inline error, no alert())
 - [ ] Copy-to-clipboard for results table
-- [ ] Mobile-responsive layout
+- [~] Mobile-responsive layout (grid collapses at 640px; not device-tested)
 
 ---
 
@@ -145,7 +145,7 @@
 
 ### 4.3 Deployment
 
-Every push to `master` → GitHub Actions syncs `ui/` to S3 and invalidates CloudFront.
+Every push to `master` → GitHub Actions FTP-syncs `ui/` to Namecheap (`/public_html/tools/isentropic/`).
 
 **simpsonaerospace.com**
 - [ ] Create WordPress page `/tools/isentropic-flow-calculator/`
@@ -169,6 +169,7 @@ Every push to `master` → GitHub Actions syncs `ui/` to S3 and invalidates Clou
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Hosting confirmed from WP admin page: Namecheap cPanel shared hosting (LiteSpeed server, Beaver Builder, WP 5.8.18). Researched VT AOE 3114 calculator — confirmed pure client-side JS, no backend. Architecture revised: no FastAPI/backend needed; all math in JavaScript; static files to AWS S3 + CloudFront. Rewrote ARCHITECTURE.md, DEPLOYMENT.md, deploy.yml (aws s3 sync on push to master), WORKLOG phases 2-4; removed Render/FastAPI references |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Simplified deployment: S3/CloudFront replaced with direct FTP to Namecheap (existing host). Updated deploy.yml (SamKirkland/FTP-Deploy-Action), DEPLOYMENT.md (3-secret setup, cPanel FTP steps, LiteSpeed cache note), ARCHITECTURE.md (hosting diagram, tech stack, embed section) |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built ui/physics.js: all compressible flow math in JS (isentropic, normal shock, oblique shock, Prandtl-Meyer, Fanno, Rayleigh, inverse solvers); all self-tests pass against James John tables |
+| 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built web UI (index.html, styles.css, app.js, local chart.umd.js); Playwright-verified; chart follows Mack plot recipe (white plot, black box, 4-sided major/minor ticks, governing equation on chart) |
 
 ---
 
