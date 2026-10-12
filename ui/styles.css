@@ -305,7 +305,7 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 16px 0; }
 }
 
 .chart-wrap {
-  background: var(--bg-surface);
+  background: #fff;
   border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);

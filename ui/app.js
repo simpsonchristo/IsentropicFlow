@@ -258,18 +258,94 @@
   // no gridlines, no fill, no legend, solid 1.5pt line, Okabe-Ito palette,
   // plot-box border, axis labels as "quantity (unit)".
 
-  var OKABE_BLUE = "#56B4E9";  // sky blue — legible on dark background
+  var LINE_COLOR = "#0072B2";  // Okabe-Ito dark blue: survives grayscale copy on white
 
-  // Draws a border around the chart area (the "plot box")
-  var chartAreaBorderPlugin = {
-    id: "chartAreaBorder",
-    afterDraw: function (ch) {
-      var ctx = ch.ctx;
-      var ca  = ch.chartArea;
+  var EQUATIONS = {
+    "ifr.tt0":   "T/T₀ = [1 + (γ−1)M²/2]⁻¹",
+    "ifr.pp0":   "P/P₀ = (T/T₀)^[γ/(γ−1)]",
+    "ifr.rr0":   "ρ/ρ₀ = (T/T₀)^[1/(γ−1)]",
+    "ifr.aa":    "A/A* = (1/M)[(2/(γ+1))(1+(γ−1)M²/2)]^[(γ+1)/(2(γ−1))]",
+    "ifr.nu":    "ν = √((γ+1)/(γ−1)) atan√((γ−1)(M²−1)/(γ+1)) − atan√(M²−1)",
+    "nsr.m2":    "M₂ = √{[2+(γ−1)M₁²] / [2γM₁²−(γ−1)]}",
+    "nsr.p2p1":  "P₂/P₁ = [2γM₁² − (γ−1)] / (γ+1)",
+    "nsr.r2r1":  "ρ₂/ρ₁ = (γ+1)M₁² / [2+(γ−1)M₁²]",
+    "nsr.t2t1":  "T₂/T₁ = (P₂/P₁)(ρ₁/ρ₂)",
+    "nsr.p02p01":"P₀₂/P₀₁ = [(γ+1)M₁²/(2+(γ−1)M₁²)]^[γ/(γ−1)] [(γ+1)/(2γM₁²−(γ−1))]^[1/(γ−1)]",
+    "osr.beta":  "tanθ = 2cotβ (M₁²sin²β−1) / [M₁²(γ+cos2β)+2]",
+    "osr.p2p1":  "P₂/P₁ = [2γMₙ²−(γ−1)]/(γ+1),  Mₙ = M₁ sinβ",
+    "osr.t2t1":  "T₂/T₁ = normal-shock T ratio at Mₙ = M₁ sinβ",
+    "fanno.tt":  "T/T* = (γ+1) / [2+(γ−1)M²]",
+    "fanno.pp":  "P/P* = (1/M) √{(γ+1) / [2+(γ−1)M²]}",
+    "fanno.p0p0":"P₀/P₀* = (1/M)[(2/(γ+1))(1+(γ−1)M²/2)]^[(γ+1)/(2(γ−1))]",
+    "fanno.uu":  "U/U* = M √{(γ+1) / [2+(γ−1)M²]}",
+    "fanno.fld": "4fL*/D = (1−M²)/(γM²) + (γ+1)/(2γ) ln{(γ+1)M²/[2+(γ−1)M²]}",
+    "rayleigh.t0t0":"T₀/T₀* = 2(γ+1)M²[1+(γ−1)M²/2] / (1+γM²)²",
+    "rayleigh.tt":  "T/T* = (γ+1)²M² / (1+γM²)²",
+    "rayleigh.pp":  "P/P* = (γ+1) / (1+γM²)",
+    "rayleigh.p0p0":"P₀/P₀* = [(γ+1)/(1+γM²)][(2/(γ+1))(1+(γ−1)M²/2)]^[γ/(γ−1)]",
+    "rayleigh.uu":  "U/U* = (γ+1)M² / (1+γM²)",
+  };
+
+  // Mack steps 5-8, 17: white plot area, black 1 pt box, major+minor ticks on all four edges
+  var mackPlugin = {
+    id: "mack",
+    beforeDraw: function (ch) {
+      var ctx = ch.ctx, ca = ch.chartArea;
+      if (!ca) return;
       ctx.save();
-      ctx.strokeStyle = "rgba(139,148,158,0.45)";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(ca.left, ca.top, ca.width, ca.height);
+      ctx.restore();
+    },
+    afterDraw: function (ch) {
+      var ctx = ch.ctx, ca = ch.chartArea;
+      if (!ca) return;
+      var MAJOR = 7, MINOR = 4, N_MINOR = 4;
+      var L = ca.left, R = ca.left + ca.width, T = ca.top, B = ca.top + ca.height;
+
+      function px(scale) {
+        return scale.ticks.map(function (t) { return scale.getPixelForValue(t.value); });
+      }
+      function minors(arr) {
+        var out = [];
+        for (var i = 0; i < arr.length - 1; i++)
+          for (var j = 1; j <= N_MINOR; j++)
+            out.push(arr[i] + (arr[i + 1] - arr[i]) * j / (N_MINOR + 1));
+        return out;
+      }
+      var xM = px(ch.scales.x), yM = px(ch.scales.y);
+
+      ctx.save();
+      ctx.strokeStyle = "#000";
       ctx.lineWidth = 1;
-      ctx.strokeRect(ca.left, ca.top, ca.width, ca.height);
+      ctx.beginPath();
+      function xt(arr, len) {
+        arr.forEach(function (x) {
+          if (x < L - 0.5 || x > R + 0.5) return;
+          ctx.moveTo(x, B); ctx.lineTo(x, B - len);
+          ctx.moveTo(x, T); ctx.lineTo(x, T + len);
+        });
+      }
+      function yt(arr, len) {
+        arr.forEach(function (y) {
+          if (y < T - 0.5 || y > B + 0.5) return;
+          ctx.moveTo(L, y); ctx.lineTo(L + len, y);
+          ctx.moveTo(R, y); ctx.lineTo(R - len, y);
+        });
+      }
+      xt(xM, MAJOR); xt(minors(xM), MINOR);
+      yt(yM, MAJOR); yt(minors(yM), MINOR);
+      ctx.stroke();
+      ctx.strokeRect(L, T, ca.width, ca.height);
+
+      var eq = EQUATIONS[activeTab + "." + el("chart-var").value];
+      if (eq) {
+        ctx.fillStyle = "#000";
+        ctx.font = "12px Arial, Helvetica, sans-serif";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "top";
+        ctx.fillText(eq, R - 12, T + 12);
+      }
       ctx.restore();
     },
   };
@@ -303,34 +379,46 @@
     if (!isFinite(g) || g <= 1) g = 1.4;
 
     var steps = 200;
-    var dm = (mmax - mmin) / steps;
-    var labels = [];
-    var seriesData = {};
     var varKey = el("chart-var").value;
+    var points = [];
 
     for (var i = 0; i <= steps; i++) {
-      var m = mmin + i * dm;
-      labels.push(m.toFixed(3));
+      var m = mmin + (mmax - mmin) * i / steps;
       var result = solver.chartFn(g, m);
-      if (result && result[varKey] != null && isFinite(result[varKey])) {
-        seriesData[i] = result[varKey];
-      } else {
-        seriesData[i] = null;
-      }
+      var y = (result && result[varKey] != null && isFinite(result[varKey])) ? result[varKey] : null;
+      points.push({ x: m, y: y });
     }
-
-    var data = [];
-    for (var j = 0; j <= steps; j++) data.push(seriesData[j]);
 
     var varLabel = (solver.chartVars.find(function (v) { return v.key === varKey; }) || {}).label || varKey;
 
-    return { labels: labels, data: data, varLabel: varLabel };
+    return { points: points, varLabel: varLabel };
+  }
+
+  // Mack step 11: set axis bounds by hand so data fills the plot box
+  function niceBounds(vals) {
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    if (!isFinite(lo) || !isFinite(hi)) return {};
+    if (hi === lo) { hi = lo + 1; }
+    var span = hi - lo;
+    var step = Math.pow(10, Math.floor(Math.log10(span)));
+    var f = span / step;
+    step *= f < 2 ? 0.2 : f < 5 ? 0.5 : 1;
+    return { min: Math.floor(lo / step) * step, max: Math.ceil(hi / step) * step };
+  }
+
+  function applyBounds(ch, cd) {
+    var xs = [], ys = [];
+    cd.points.forEach(function (p) { xs.push(p.x); if (p.y != null) ys.push(p.y); });
+    var xb = niceBounds(xs);
+    var yb = niceBounds(ys);
+    ch.options.scales.x.min = xb.min; ch.options.scales.x.max = xb.max;
+    ch.options.scales.y.min = yb.min; ch.options.scales.y.max = yb.max;
   }
 
   function updateChart() {
     var cd = buildChartData(activeTab);
     if (!cd) {
-      if (chart) { chart.data.labels = []; chart.data.datasets[0].data = []; chart.update(); }
+      if (chart) { chart.data.datasets[0].data = []; chart.update(); }
       return;
     }
 
@@ -339,27 +427,25 @@
     var xLabel = activeTab === "osr" ? "Deflection Angle θ (°)" : "Mach Number (M)";
 
     if (chart) {
-      chart.data.labels = cd.labels;
-      chart.data.datasets[0].data = cd.data;
-      chart.data.datasets[0].label = cd.varLabel;
+      chart.data.datasets[0].data = cd.points;
       chart.options.scales.x.title.text = xLabel;
       chart.options.scales.y.title.text = cd.varLabel + " (–)";
+      applyBounds(chart, cd);
       chart.update("none");
       return;
     }
 
-    var TICK  = { color: "#8b949e", font: { family: "Arial, Helvetica, sans-serif", size: 11 } };
-    var TITLE = { display: true, color: "#8b949e", font: { family: "Arial, Helvetica, sans-serif", size: 12, weight: "normal" } };
+    var TICK  = { color: "#000", font: { family: "Arial, Helvetica, sans-serif", size: 12 }, maxTicksLimit: 8 };
+    var TITLE = { display: true, color: "#000", font: { family: "Arial, Helvetica, sans-serif", size: 13, weight: "normal" } };
 
     chart = new Chart(ctx, {
       type: "line",
-      plugins: [chartAreaBorderPlugin],
+      plugins: [mackPlugin],
       data: {
-        labels: cd.labels,
         datasets: [{
           label: cd.varLabel,
-          data: cd.data,
-          borderColor: OKABE_BLUE,
+          data: cd.points,
+          borderColor: LINE_COLOR,
           backgroundColor: "transparent",
           borderWidth: 1.5,       // Mack: ~1.5 pt
           pointRadius: 0,
@@ -385,7 +471,7 @@
             bodyFont:  { family: "Arial, Helvetica, sans-serif" },
             callbacks: {
               title: function (items) {
-                return xLabel.replace("(M)", "") + items[0].label;
+                return xLabel + " = " + items[0].parsed.x.toFixed(3);
               },
               label: function (item) {
                 return " " + cd.varLabel + ": " + (item.parsed.y != null ? item.parsed.y.toPrecision(5) : "—");
@@ -395,20 +481,24 @@
         },
         scales: {
           x: {
+            type: "linear",
             title: Object.assign({}, TITLE, { text: xLabel }),
-            ticks: Object.assign({}, TICK, { maxTicksLimit: 10 }),
-            grid: { display: false },   // no gridlines (Mack)
-            border: { color: "rgba(139,148,158,0.45)" },
+            ticks: Object.assign({}, TICK),
+            grid: { display: false, drawTicks: false },
+            border: { color: "#000", width: 1 },
           },
           y: {
+            type: "linear",
             title: Object.assign({}, TITLE, { text: cd.varLabel + " (–)" }),
-            ticks: TICK,
-            grid: { display: false },   // no gridlines (Mack)
-            border: { color: "rgba(139,148,158,0.45)" },
+            ticks: Object.assign({}, TICK),
+            grid: { display: false, drawTicks: false },
+            border: { color: "#000", width: 1 },
           },
         },
       },
     });
+    applyBounds(chart, cd);
+    chart.update("none");
   }
 
   el("chart-update-btn").addEventListener("click", function () {
@@ -446,13 +536,12 @@
     var g = val("osr-gamma");
     if (!isFinite(g) || g <= 1) g = 1.4;
     var varKey = el("chart-var").value;
-    var labels = [], data = [];
+    var points = [];
 
     for (var i = 0; i <= steps; i++) {
       var theta = tmin + (tmax - tmin) * i / steps;
-      labels.push(theta.toFixed(2));
       var result = solver.chartFn(g, theta);
-      data.push(result && result[varKey] != null && isFinite(result[varKey]) ? result[varKey] : null);
+      points.push({ x: theta, y: result && result[varKey] != null && isFinite(result[varKey]) ? result[varKey] : null });
     }
 
     var varLabel = (solver.chartVars.find(function (v) { return v.key === varKey; }) || {}).label || varKey;
@@ -462,7 +551,7 @@
       chart.options.scales.x.title.text = "Deflection Angle θ (°)";
     }
 
-    return { labels: labels, data: data, varLabel: varLabel };
+    return { points: points, varLabel: varLabel };
   };
 
   // ── Init ──────────────────────────────────────────────────────────────
