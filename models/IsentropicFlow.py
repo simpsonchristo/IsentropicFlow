@@ -28,37 +28,40 @@ class IsentropicFlow:
 
     # Temperature Ratio: T/To = Temperature / Total Temperature
     def tt0(self,m):
-        return np.pow((1.+(self.gamma-1)/2.*m*m),-1)
+        return np.power((1.+(self.gamma-1)/2.*m*m),-1)
 
     # Pressure Ratio: P/Po = Pressure / Total Pressure
     def pp0(self,m):
-        return np.pow((1.+(self.gamma-1.)/2.*m*m),-self.gamma/(self.gamma-1.))
+        return np.power((1.+(self.gamma-1.)/2.*m*m),-self.gamma/(self.gamma-1.))
 
     # Density Ratio: rho/rho_o
     def rr0(self,m):
-        return np.pow((1.+(self.gamma-1.)/2*m*m),-1/(self.gamma-1.))
+        return np.power((1.+(self.gamma-1.)/2*m*m),-1/(self.gamma-1.))
 
-    # Normal Shock
-    def tts(self,m):
-        return self.tt0(m)*(self.gamma/2. + 0.5)
-
-    # Normal Shock
+    # Normal shock static pressure ratio P2/P1
     def pps(self,m):
-        return self.pp0(m)*np.pow((self.gamma/2 +0.5),self.gamma/(self.gamma-1.))
+        g = self.gamma
+        return (2.*g*m*m - (g - 1.)) / (g + 1.)
 
-    # Normal Shock
+    # Normal shock density ratio rho2/rho1
     def rrs(self,m):
-        return self.rr0(m)*np.pow((self.gamma/2 +0.5),1./(self.gamma-1.))
+        g = self.gamma
+        return (g + 1.)*m*m / (2. + (g - 1.)*m*m)
 
-    # Normal Shock
+    # Normal shock static temperature ratio T2/T1
+    def tts(self,m):
+        return self.pps(m) / self.rrs(m)
+
+    # Isentropic area-Mach ratio A/A*
     def aas(self,m):
-        return 1./self.rrs(m)*np.sqrt(1./self.tts(m))/m
+        g = self.gamma
+        return np.power((2./(g + 1.))*(1. + (g - 1.)/2.*m*m), (g + 1.)/(2.*(g - 1.))) / m
 
     # Prandtl Meyer Function
     def nu(self,m):
-        n = np.sqrt((self.gamma + 1.) / (self.gamma - 1.)) * np.atan(np.sqrt((self.gamma - 1.) / (self.gamma + 1.) * (m * m - 1.)))
-        n = n - np.atan(np.sqrt(m * m - 1.))
-        n = n * 180. / 3.14159265359
+        n = np.sqrt((self.gamma + 1.) / (self.gamma - 1.)) * np.arctan(np.sqrt((self.gamma - 1.) / (self.gamma + 1.) * (m * m - 1.)))
+        n = n - np.arctan(np.sqrt(m * m - 1.))
+        n = np.degrees(n)
         return n
 
     # Normal Shock
@@ -125,15 +128,20 @@ if __name__ == "__main__":
     unittestscalar("Normal Shock Mach gamma=1.4 M=3", flow.m2(3), 0.4752, 0.0001)
     unittestscalar("Normal Shock Mach gamma=1.4 M=5", flow.m2(5), 0.4152, 0.0001)
 
+    # Normal shock ratios, gamma 1.4, Gas Dynamics, James John, Appendix B
     unittestscalar("Normal Shock Temp gamma=1.4 M=1", flow.tts(1), 1.0, 0.0001)
-    unittestscalar("Normal Shock Temp gamma=1.4 M=2", flow.tts(2), 1.688, 0.0001)
+    unittestscalar("Normal Shock Temp gamma=1.4 M=2", flow.tts(2), 1.6875, 0.0001)
+    unittestscalar("Normal Shock Temp gamma=1.4 M=3", flow.tts(3), 2.679, 0.001)
 
     unittestscalar("Normal Shock Pressure gamma=1.4 M=1", flow.pps(1), 1.0, 0.0001)
     unittestscalar("Normal Shock Pressure gamma=1.4 M=2", flow.pps(2), 4.500, 0.0001)
+    unittestscalar("Normal Shock Pressure gamma=1.4 M=3", flow.pps(3), 10.333, 0.001)
 
     unittestscalar("Normal Shock Density gamma=1.4 M=1", flow.rrs(1), 1.0, 0.0001)
-    unittestscalar("Normal Shock Density gamma=1.4 M=2", flow.rrs(2), 4.500, 0.0001)
+    unittestscalar("Normal Shock Density gamma=1.4 M=2", flow.rrs(2), 2.6667, 0.0001)
+    unittestscalar("Normal Shock Density gamma=1.4 M=3", flow.rrs(3), 3.857, 0.001)
 
-    unittestscalar("Normal Shock Sonic Speed gamma=1.4 M=1", flow.aas(1), 1.0, 0.0001)
-    unittestscalar("Normal Shock Sonic Speed gamma=1.4 M=2", flow.aas(2), 4.500, 0.0001)
-
+    # Isentropic area ratio, Gas Dynamics, James John, Table A.1
+    unittestscalar("Isentropic A/A* gamma=1.4 M=1", flow.aas(1), 1.0, 0.0001)
+    unittestscalar("Isentropic A/A* gamma=1.4 M=2", flow.aas(2), 1.6875, 0.0001)
+    unittestscalar("Isentropic A/A* gamma=1.4 M=0.5", flow.aas(0.5), 1.3398, 0.0001)
