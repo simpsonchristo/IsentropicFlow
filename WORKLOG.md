@@ -174,6 +174,7 @@ Every push to `master` → GitHub Actions FTP-syncs `ui/` to Namecheap (`/public
 | 2026-10-13 | claude/review-docs-plan-ui-U8kGB | Fixed Python bugs B1 (numpy<2 compat: np.arctan/np.power/np.degrees) and B2 (normal-shock tts/pps/rrs formulas, isentropic aas); corrected wrong test expectations; all 27 inline tests pass and agree with physics.js |
 | 2026-10-14 | claude/review-docs-plan-ui-U8kGB | Per Dr. O'Neill's review: removed Calculate/Update Chart buttons; results and chart now recompute live on every input event (all solver inputs, chart variable and Mach range). Chart updates in place (tooltip reads shared state). Fixed results-table caption showing "COMPUTE". Playwright live-update test: 20/20 checks. Standard atmosphere offered by Dr. O'Neill, not started |
 | 2026-10-14 | claude/review-docs-plan-ui-U8kGB | Rewrote README (live link, current solver status, local run/test, layout); added B5 (CI cannot fail on test failures); opened issue for standard atmosphere (assigned to Dr. O'Neill). A branded link-preview image was tried and reverted at the owner's request |
+| 2026-10-14 | claude/review-docs-plan-ui-U8kGB | Fixed B5: `models/IsentropicFlow.py` now exits 1 on any failed case; CI gained a Node step running the `ui/physics.js` self-tests. Reviewed Dr. O'Neill's repo contributions (3 commits incl. the unit-test harness, PR #1, live-update suggestion, atmosphere offer) and recorded them on issue #12 |
 
 ---
 
@@ -197,4 +198,4 @@ or a backend is needed.
 | B2 | IsentropicFlow.py          | ~~`tts/pps/rrs` returned sonic-relative ratios (T/T*, P/P*, ρ/ρ*) labelled as normal shock; tests were failing; test truth for density/A* was copy-pasted 4.5~~ **Fixed 2026-10-13**: real normal-shock ratios, `aas` is isentropic A/A*; matches `ui/physics.js` to 6 digits | High |
 | B3 | main.py                   | `isentropicFlow` function defined but never implemented  | Medium   |
 | B4 | combustor.py              | Entire class commented out, file is essentially empty    | Medium   |
-| B5 | models/IsentropicFlow.py, ci.yml | Inline tests print `Failed` but the script always exits 0, so CI passes even when tests fail (B2 failures went unnoticed); should exit non-zero or move to pytest (Phase 4.1) | Medium |
+| B5 | models/IsentropicFlow.py, ci.yml | ~~Inline tests printed `Failed` but the script always exited 0, so CI passed even when tests failed (B2 failures went unnoticed)~~ **Fixed 2026-10-14**: Python script exits 1 on any failure; CI also runs the JS self-tests (`ui/physics.js`) and fails on a non-zero exit | Medium |

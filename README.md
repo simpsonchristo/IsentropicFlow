@@ -62,8 +62,8 @@ pip install -r requirements.txt
 python models/IsentropicFlow.py # Python inline unit tests
 ```
 
-The Python tests print `Passed` / `Failed` for each case; check the output, because the script
-does not yet exit non-zero on a failure (tracked in WORKLOG).
+Both test scripts exit non-zero if any case fails, and CI runs both on every pull request and
+every push to `master`.
 
 ---
 

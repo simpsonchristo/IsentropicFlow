@@ -21,5 +21,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run physics unit tests
+      - name: Run Python physics unit tests (exits non-zero on any failure)
         run: python models/IsentropicFlow.py
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run JavaScript physics self-tests
+        run: |
+          node -e "process.exit(require('./ui/physics.js')._selfTest() ? 0 : 1)"
