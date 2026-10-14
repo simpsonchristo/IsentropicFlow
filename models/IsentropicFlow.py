@@ -5,6 +5,8 @@
 @title: Isentropic Flow Module
 '''
 
+import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -90,10 +92,13 @@ class IsentropicFlow:
 
 if __name__ == "__main__":
 
+    failures = []
+
     def unittestrange(text, value, truthlow, truthhigh):
         if truthlow <= value <= truthhigh:
             print(f' {text} Passed')
         else:
+            failures.append(text)
             print(f' {text} Failed     Value {value}   Truth {truthlow} to {truthhigh}')
     def unittestvec(text,value,truth, tolerance):
         truthlow = [i*(1-tolerance) for i in truth]
@@ -145,3 +150,8 @@ if __name__ == "__main__":
     unittestscalar("Isentropic A/A* gamma=1.4 M=1", flow.aas(1), 1.0, 0.0001)
     unittestscalar("Isentropic A/A* gamma=1.4 M=2", flow.aas(2), 1.6875, 0.0001)
     unittestscalar("Isentropic A/A* gamma=1.4 M=0.5", flow.aas(0.5), 1.3398, 0.0001)
+
+    if failures:
+        print(f'\n{len(failures)} test(s) FAILED: ' + ', '.join(failures))
+        sys.exit(1)
+    print('\nAll tests passed')

@@ -57,13 +57,15 @@ Opening `ui/index.html` directly in a browser also works.
 ### Tests
 
 ```bash
-node ui/physics.js              # JS physics self-tests (James John table values, ±0.01%)
+# JS physics self-tests (James John table values, ±0.01%); exits 1 on any failure
+node -e "process.exit(require('./ui/physics.js')._selfTest() ? 0 : 1)"
+
+# Python inline unit tests; exits 1 on any failure
 pip install -r requirements.txt
-python models/IsentropicFlow.py # Python inline unit tests
+python models/IsentropicFlow.py
 ```
 
-The Python tests print `Passed` / `Failed` for each case; check the output, because the script
-does not yet exit non-zero on a failure (tracked in WORKLOG).
+CI runs both on every pull request and every push to `master`.
 
 ---
 
