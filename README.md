@@ -126,9 +126,9 @@ Plot style: Mack, *JM3* 2014 editorial plot recipe (see WORKLOG).
 
 ## Acknowledgements
 
-Dr. [Charles O'Neill](https://charles-oneill.com/blog/) wrote the original unit-test harness and
-normal-shock tests, reviewed the live calculator, suggested live updating of results and plots,
-and has offered to add the standard atmosphere ([#11][atm]).
+Written with Dr. Charles O'Neill: <https://charles-oneill.com/blog/>. He wrote the original
+unit-test harness and normal-shock tests, reviewed the live calculator, suggested live updating
+of results and plots, and has offered to add the standard atmosphere ([#11][atm]).
 
 ## License
 
