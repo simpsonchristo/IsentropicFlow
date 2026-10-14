@@ -325,3 +325,13 @@ main { max-width: 960px; margin: 0 auto; padding: 24px 16px 0; }
   color: var(--text-3);
   border-top: 1px solid var(--border);
 }
+
+.footer-credit { display: block; margin-top: 4px; }
+
+.footer-credit a {
+  color: var(--text-2);
+  text-decoration: underline;
+}
+
+.footer-credit a:hover,
+.footer-credit a:focus-visible { color: var(--accent-hi); }
