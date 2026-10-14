@@ -9,6 +9,7 @@
 
   var SOLVERS = {
     ifr: {
+      title: "Isentropic Flow",
       chartVars: [
         { key: "tt0",  label: "T/T₀" },
         { key: "pp0",  label: "P/P₀" },
@@ -40,6 +41,7 @@
     },
 
     nsr: {
+      title: "Normal Shock",
       chartVars: [
         { key: "m2",    label: "M₂" },
         { key: "p2p1",  label: "P₂/P₁" },
@@ -71,6 +73,7 @@
     },
 
     osr: {
+      title: "Oblique Shock (weak)",
       chartVars: [
         { key: "beta",  label: "β (wave angle°)" },
         { key: "p2p1",  label: "P₂/P₁" },
@@ -94,6 +97,7 @@
     },
 
     fanno: {
+      title: "Fanno Flow",
       chartVars: [
         { key: "tt",   label: "T/T*" },
         { key: "pp",   label: "P/P*" },
@@ -125,6 +129,7 @@
     },
 
     rayleigh: {
+      title: "Rayleigh Flow",
       chartVars: [
         { key: "t0t0", label: "T₀/T₀*" },
         { key: "tt",   label: "T/T*" },
@@ -159,6 +164,7 @@
   // ── State ─────────────────────────────────────────────────────────────
   var activeTab = "ifr";
   var chart = null;
+  var chartMeta = { xLabel: "", varLabel: "" };
 
   // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -184,7 +190,7 @@
       return;
     }
     var html = "<table class='results-table'>" +
-      "<caption>" + SOLVERS[solver].compute.name || solver.toUpperCase() + "</caption>" +
+      "<caption>" + SOLVERS[solver].title + "</caption>" +
       "<thead><tr><th>Symbol</th><th>Quantity</th><th>Value</th></tr></thead><tbody>";
     rows.forEach(function (r) {
       html += "<tr><td>" + r.sym + "</td><td>" + r.label + "</td><td>" + fmt(r.val) + "</td></tr>";
@@ -214,42 +220,40 @@
     });
   });
 
-  // ── Calculate buttons ──────────────────────────────────────────────────
+  // ── Live calculation (recompute on every input change) ─────────────────
 
-  document.querySelectorAll(".calc-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var solver = btn.dataset.solver;
-      setError(solver, "");
-      var g = val(solver + "-gamma");
-      var m = val(solver + "-mach");
+  var SOLVER_IDS = ["ifr", "nsr", "osr", "fanno", "rayleigh"];
 
-      if (!isFinite(g) || g <= 1) { setError(solver, "γ must be > 1"); return; }
+  function calculate(solver) {
+    setError(solver, "");
+    var g = val(solver + "-gamma");
+    var m = val(solver + "-mach");
+    var rows = null;
 
-      if (solver === "osr") {
-        var theta = val("osr-theta");
-        if (!isFinite(m) || m < 1) { setError(solver, "M₁ must be ≥ 1"); return; }
-        if (!isFinite(theta) || theta <= 0 || theta >= 90) { setError(solver, "θ must be between 0° and 90°"); return; }
-        renderResults(solver, SOLVERS[solver].compute(g, m, theta));
-      } else {
-        if (!isFinite(m) || m <= 0) { setError(solver, "M must be > 0"); return; }
-        if ((solver === "nsr") && m < 1) { setError(solver, "Normal shock requires M₁ ≥ 1"); return; }
-        renderResults(solver, SOLVERS[solver].compute(g, m));
-      }
-      updateChart();
-    });
-  });
+    if (!isFinite(g) || g <= 1) {
+      setError(solver, "γ must be > 1");
+    } else if (solver === "osr") {
+      var theta = val("osr-theta");
+      if (!isFinite(m) || m < 1) setError(solver, "M₁ must be ≥ 1");
+      else if (!isFinite(theta) || theta <= 0 || theta >= 90) setError(solver, "θ must be between 0° and 90°");
+      else rows = SOLVERS[solver].compute(g, m, theta);
+    } else if (!isFinite(m) || m <= 0) {
+      setError(solver, "M must be > 0");
+    } else if (solver === "nsr" && m < 1) {
+      setError(solver, "Normal shock requires M₁ ≥ 1");
+    } else {
+      rows = SOLVERS[solver].compute(g, m);
+    }
+    renderResults(solver, rows);
+  }
 
-  // ── Enter key submits ──────────────────────────────────────────────────
-
-  document.querySelectorAll("input[type=number]").forEach(function (inp) {
-    inp.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        var panel = inp.closest(".panel");
-        if (panel) {
-          var btn = panel.querySelector(".calc-btn");
-          if (btn) btn.click();
-        }
-      }
+  SOLVER_IDS.forEach(function (solver) {
+    var panel = el("panel-" + solver);
+    panel.querySelectorAll("input[type=number]").forEach(function (inp) {
+      inp.addEventListener("input", function () {
+        calculate(solver);
+        updateChart();
+      });
     });
   });
 
@@ -425,8 +429,11 @@
     var ctx = el("flow-chart").getContext("2d");
 
     var xLabel = activeTab === "osr" ? "Deflection Angle θ (°)" : "Mach Number (M)";
+    chartMeta.xLabel = xLabel;
+    chartMeta.varLabel = cd.varLabel;
 
     if (chart) {
+      chart.data.datasets[0].label = cd.varLabel;
       chart.data.datasets[0].data = cd.points;
       chart.options.scales.x.title.text = xLabel;
       chart.options.scales.y.title.text = cd.varLabel + " (–)";
@@ -471,10 +478,10 @@
             bodyFont:  { family: "Arial, Helvetica, sans-serif" },
             callbacks: {
               title: function (items) {
-                return xLabel + " = " + items[0].parsed.x.toFixed(3);
+                return chartMeta.xLabel + " = " + items[0].parsed.x.toFixed(3);
               },
               label: function (item) {
-                return " " + cd.varLabel + ": " + (item.parsed.y != null ? item.parsed.y.toPrecision(5) : "—");
+                return " " + chartMeta.varLabel + ": " + (item.parsed.y != null ? item.parsed.y.toPrecision(5) : "—");
               },
             },
           },
@@ -501,15 +508,10 @@
     chart.update("none");
   }
 
-  el("chart-update-btn").addEventListener("click", function () {
-    if (chart) { chart.destroy(); chart = null; }
-    updateChart();
+  ["chart-mmin", "chart-mmax"].forEach(function (id) {
+    el(id).addEventListener("input", updateChart);
   });
-
-  el("chart-var").addEventListener("change", function () {
-    if (chart) { chart.destroy(); chart = null; }
-    updateChart();
-  });
+  el("chart-var").addEventListener("change", updateChart);
 
   // ── Oblique shock: chart β vs θ ───────────────────────────────────────
   // Override chartFn for osr after init (needs M1 from input)
@@ -557,6 +559,7 @@
   // ── Init ──────────────────────────────────────────────────────────────
 
   populateChartVars(activeTab);
+  SOLVER_IDS.forEach(calculate);
   updateChart();
 
 }());

@@ -171,6 +171,7 @@ Every push to `master` → GitHub Actions FTP-syncs `ui/` to Namecheap (`/public
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built ui/physics.js: all compressible flow math in JS (isentropic, normal shock, oblique shock, Prandtl-Meyer, Fanno, Rayleigh, inverse solvers); all self-tests pass against James John tables |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built web UI (index.html, styles.css, app.js, local chart.umd.js); Playwright-verified; chart follows Mack plot recipe (white plot, black box, 4-sided major/minor ticks, governing equation on chart) |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | First deploy to Namecheap: FTP_SERVER must be `simpsonaerospace.com` (`ftp.` has no DNS); cPanel FTP accounts are jailed to their directory (verified by probe), so deploy uses a home-root FTP account with `server-dir: /public_html/tools/isentropic/` |
+| 2026-10-14 | claude/review-docs-plan-ui-U8kGB | Per Dr. O'Neill's review: removed Calculate/Update Chart buttons; results and chart now recompute live on every input event (all solver inputs, chart variable and Mach range). Chart updates in place (tooltip reads shared state). Fixed results-table caption showing "COMPUTE". Playwright live-update test: 20/20 checks. Standard atmosphere offered by Dr. O'Neill, not started |
 
 ---
 
