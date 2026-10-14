@@ -171,6 +171,8 @@ Every push to `master` → GitHub Actions FTP-syncs `ui/` to Namecheap (`/public
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built ui/physics.js: all compressible flow math in JS (isentropic, normal shock, oblique shock, Prandtl-Meyer, Fanno, Rayleigh, inverse solvers); all self-tests pass against James John tables |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | Built web UI (index.html, styles.css, app.js, local chart.umd.js); Playwright-verified; chart follows Mack plot recipe (white plot, black box, 4-sided major/minor ticks, governing equation on chart) |
 | 2026-10-12 | claude/review-docs-plan-ui-U8kGB | First deploy to Namecheap: FTP_SERVER must be `simpsonaerospace.com` (`ftp.` has no DNS); cPanel FTP accounts are jailed to their directory (verified by probe), so deploy uses a home-root FTP account with `server-dir: /public_html/tools/isentropic/` |
+| 2026-10-13 | claude/review-docs-plan-ui-U8kGB | Fixed Python bugs B1 (numpy<2 compat: np.arctan/np.power/np.degrees) and B2 (normal-shock tts/pps/rrs formulas, isentropic aas); corrected wrong test expectations; all 27 inline tests pass and agree with physics.js |
+| 2026-10-14 | claude/review-docs-plan-ui-U8kGB | Per Dr. O'Neill's review: removed Calculate/Update Chart buttons; results and chart now recompute live on every input event (all solver inputs, chart variable and Mach range). Chart updates in place (tooltip reads shared state). Fixed results-table caption showing "COMPUTE". Playwright live-update test: 20/20 checks. Standard atmosphere offered by Dr. O'Neill, not started |
 
 ---
 
@@ -190,7 +192,7 @@ or a backend is needed.
 
 | ID | File                      | Description                                              | Priority |
 |----|---------------------------|----------------------------------------------------------|----------|
-| B1 | IsentropicFlow.py:59      | `np.atan` should be `np.arctan`; `3.14159...` should be `np.pi` | High |
-| B2 | IsentropicFlow.py:43      | `tts()` formula looks incorrect — should be `(2γM²-(γ-1))/(γ+1) * (2+(γ-1)M²)/(γ+1)M²`; current form may only be valid at specific conditions | High |
+| B1 | IsentropicFlow.py          | ~~`np.atan`/`np.pow` do not exist in numpy<2 (repo pins >=1.26); hard-coded pi~~ **Fixed 2026-10-13**: `np.arctan`, `np.power`, `np.degrees` | High |
+| B2 | IsentropicFlow.py          | ~~`tts/pps/rrs` returned sonic-relative ratios (T/T*, P/P*, ρ/ρ*) labelled as normal shock; tests were failing; test truth for density/A* was copy-pasted 4.5~~ **Fixed 2026-10-13**: real normal-shock ratios, `aas` is isentropic A/A*; matches `ui/physics.js` to 6 digits | High |
 | B3 | main.py                   | `isentropicFlow` function defined but never implemented  | Medium   |
 | B4 | combustor.py              | Entire class commented out, file is essentially empty    | Medium   |
