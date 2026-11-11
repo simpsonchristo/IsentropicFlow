@@ -18,6 +18,8 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./ui/
           server-dir: /public_html/tools/isentropic/
+          protocol: ftps      # explicit FTPS on port 21 (encrypted login and data)
+          security: strict    # verify the server certificate; FTP_SERVER must be the host's own name
           exclude: |
             **/.git*
             **/.git*/**

@@ -46,8 +46,11 @@ existing Namecheap hosting.
    - Note: a root-level account can write anywhere under your home directory, including WordPress.
      Use a long random password, and rotate it if the GitHub secret is ever exposed.
 4. The action creates `tools/isentropic` on first deploy; no need to make it by hand.
-5. Note down: FTP hostname, username, password. Use `simpsonaerospace.com` (or the server IP) as
-   the hostname if `ftp.simpsonaerospace.com` has no DNS record: it did not resolve for this domain.
+5. Note down: FTP hostname, username, password. The deploy uses explicit FTPS (encrypted) with the
+   certificate verified, so the hostname must be your **server's own name** (cPanel → FTP Accounts →
+   Configure FTP Client → "FTP Server", e.g. `server267.web-hosting.com`). `ftp.simpsonaerospace.com`
+   has no DNS record, and `simpsonaerospace.com` reaches the server but its certificate is not
+   issued for that name, so strict verification fails there (probed 2026-11-11).
 
 ### Step 2 — Add FTP credentials to GitHub Secrets
 
@@ -55,7 +58,7 @@ Go to **GitHub → simpsonchristo/IsentropicFlow → Settings → Secrets and va
 
 | Secret name | Value |
 |---|---|
-| `FTP_SERVER` | `simpsonaerospace.com` (bare hostname, no `ftp://`) |
+| `FTP_SERVER` | The server's own hostname from cPanel (e.g. `server267.web-hosting.com`), bare, no `ftp://` |
 | `FTP_USERNAME` | Your FTP username (e.g. `deploy@simpsonaerospace.com`) |
 | `FTP_PASSWORD` | Your FTP password |
 
@@ -141,7 +144,7 @@ in `.github/workflows/deploy.yml`.
 
 | Secret | Example value | Where to find it |
 |---|---|---|
-| `FTP_SERVER` | `simpsonaerospace.com` (bare hostname, no `ftp://`) | Namecheap cPanel → FTP Accounts |
+| `FTP_SERVER` | `server267.web-hosting.com` (use your own) | cPanel → FTP Accounts → Configure FTP Client |
 | `FTP_USERNAME` | `deploy@simpsonaerospace.com` | Namecheap cPanel → FTP Accounts |
 | `FTP_PASSWORD` | (your FTP password) | Set when creating the FTP account |
 
@@ -156,5 +159,18 @@ in `.github/workflows/deploy.yml`.
 | Page shows directory listing instead of calculator | No `index.html` in the folder | Confirm `ui/index.html` exists and was uploaded |
 | Changes not visible after deploy | LiteSpeed Cache serving stale version | In WP admin → LiteSpeed Cache → Purge All, or wait for cache TTL |
 | Deploy succeeds but site shows a WordPress 404 | FTP account home is not the cPanel home root, so `/public_html/...` resolved inside a subfolder | Check where File Manager shows `index.html`; recreate the FTP account with its Directory at the home root, then delete the stray copy |
-| `getaddrinfo ENOTFOUND` | `FTP_SERVER` hostname does not resolve | Use `simpsonaerospace.com` or the server IP |
+| `getaddrinfo ENOTFOUND` | `FTP_SERVER` hostname does not resolve | Use the server's own hostname from cPanel → FTP Accounts → Configure FTP Client |
+| `Hostname mismatch` / certificate error | `FTP_SERVER` is a name the server certificate is not issued for (e.g. `simpsonaerospace.com`) | Use the server's own hostname; do not set `security: loose` (that turns off the identity check) |
 | `deploy.yml` runs but skips all files | FTP action `.ftp-deploy-sync-state.json` is stale | Delete `.ftp-deploy-sync-state.json` from the server path via cPanel File Manager and re-run |
+
+---
+
+## Transport security and folder hardening
+
+- `deploy.yml` uses `protocol: ftps` and `security: strict`: the login and file transfers are
+  encrypted and the server certificate is verified. Plain FTP sends the password unencrypted.
+- `ui/.htaccess` is deployed with the calculator. It switches off directory listing, denies the
+  deploy action's `.ftp-deploy-sync-state.json`, and adds `X-Content-Type-Options`, a referrer
+  policy and a Content-Security-Policy (scripts and styles from this origin only; the page may be
+  framed by simpsonaerospace.com and charles-oneill.com). If you add an external script, font or
+  image, update the policy in `ui/.htaccess` or the browser will block it.
