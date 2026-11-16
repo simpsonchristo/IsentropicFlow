@@ -1,0 +1,16 @@
+# Hardening for /tools/isentropic/ (LiteSpeed reads Apache-style .htaccess)
+
+Options -Indexes
+
+# The FTP deploy action stores its sync state here; no reason to serve it
+<Files ".ftp-deploy-sync-state.json">
+  Require all denied
+</Files>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # "add" keeps any CSP the host already sends (upgrade-insecure-requests).
+  # frame-ancestors lets simpsonaerospace.com and charles-oneill.com embed the calculator in an iframe.
+  Header always add Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self' https://charles-oneill.com https://www.charles-oneill.com"
+</IfModule>
